@@ -1,0 +1,11 @@
+{
+  "aria": {
+    "id": "aria",
+    "name": "艾莉娅",
+    "role": "farm_assistant",
+    "life_talent": "auto_water",
+    "combat_role": "support",
+    "hire_cost_wish_stone": 100
+  }
+}
+

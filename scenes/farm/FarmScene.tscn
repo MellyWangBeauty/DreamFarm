@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/farming/FarmScene.gd" id="1_farm_scene_script"]
+[ext_resource type="PackedScene" path="res://scenes/player/Player.tscn" id="2_player_scene"]
+
+[node name="FarmScene" type="Node2D"]
+script = ExtResource("1_farm_scene_script")
+
+[node name="Tiles" type="Node2D" parent="."]
+
+[node name="Assistants" type="Node" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("2_player_scene")]
+position = Vector2(24, 24)
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+enabled = true

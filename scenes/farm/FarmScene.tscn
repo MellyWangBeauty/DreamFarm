@@ -12,6 +12,3 @@ script = ExtResource("1_farm_scene_script")
 
 [node name="Player" parent="." instance=ExtResource("2_player_scene")]
 position = Vector2(24, 24)
-
-[node name="Camera2D" type="Camera2D" parent="Player"]
-enabled = true

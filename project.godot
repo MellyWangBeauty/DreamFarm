@@ -23,6 +23,8 @@ CurrencyManager="*res://scripts/managers/CurrencyManager.gd"
 SaveManager="*res://scripts/managers/SaveManager.gd"
 CropData="*res://scripts/farming/CropData.gd"
 RecruitmentManager="*res://scripts/characters/RecruitmentManager.gd"
+ItemDatabase="*res://scripts/data/ItemDatabase.gd"
+HotbarManager="*res://scripts/managers/HotbarManager.gd"
 
 [display]
 

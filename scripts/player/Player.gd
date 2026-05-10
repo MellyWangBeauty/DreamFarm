@@ -8,6 +8,9 @@ const WALK_TEXTURE := preload("res://assets/placeholder/player/player_walksheet.
 var facing_direction: Vector2 = Vector2.DOWN
 var _sprite: AnimatedSprite2D
 var _last_animation: String = "walk_down"
+var _swing_time: float = 0.0
+var _swing_duration: float = 0.12
+var _swing_strength: float = 0.0
 
 
 func _ready() -> void:
@@ -15,12 +18,13 @@ func _ready() -> void:
 	z_index = 20
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	var input_vector := _get_input_vector()
 	if input_vector != Vector2.ZERO:
 		facing_direction = input_vector.normalized()
 	velocity = input_vector * move_speed
 	move_and_slide()
+	_update_swing(delta)
 	_update_animation()
 
 
@@ -105,3 +109,26 @@ func _update_animation() -> void:
 		_sprite.play(animation_name)
 		_sprite.frame = 1
 		_sprite.stop()
+
+
+func play_tool_swing(tool_id: String) -> void:
+	_swing_duration = 0.14
+	_swing_strength = 0.20 if tool_id == "scythe" else 0.14
+	if tool_id == "watering_can":
+		_swing_strength = 0.10
+	_swing_time = _swing_duration
+
+
+func _update_swing(delta: float) -> void:
+	if _swing_time <= 0.0:
+		_sprite.rotation = 0.0
+		_sprite.position = Vector2(0, -14)
+		return
+	_swing_time = maxf(_swing_time - delta, 0.0)
+	var progress := 1.0 - (_swing_time / _swing_duration)
+	var wave := sin(progress * PI)
+	var horizontal := signf(facing_direction.x)
+	if horizontal == 0.0:
+		horizontal = 1.0 if facing_direction.y >= 0.0 else -1.0
+	_sprite.rotation = wave * _swing_strength * horizontal
+	_sprite.position = Vector2(horizontal * wave * 4.0, -14 + wave * 2.0)

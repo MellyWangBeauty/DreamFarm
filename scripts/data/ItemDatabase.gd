@@ -1,0 +1,99 @@
+extends Node
+
+
+const ITEMS_DATA_PATH := "res://data/items.json"
+const DEFAULT_HOTBAR: Array[String] = [
+	"hoe",
+	"watering_can",
+	"wheat_seed",
+	"potato_seed",
+	"carrot_seed",
+	"scythe",
+	"",
+	"",
+	"",
+	""
+]
+
+var _items: Dictionary = {}
+var _icon_cache: Dictionary = {}
+
+
+func _ready() -> void:
+	_load_data()
+
+
+func _load_data() -> void:
+	if not FileAccess.file_exists(ITEMS_DATA_PATH):
+		push_error("ItemDatabase: items.json not found.")
+		return
+	var file = FileAccess.open(ITEMS_DATA_PATH, FileAccess.READ)
+	if file == null:
+		push_error("ItemDatabase: failed to open items.json.")
+		return
+	var parser = JSON.new()
+	var result = parser.parse(file.get_as_text())
+	if result != OK or typeof(parser.data) != TYPE_DICTIONARY:
+		push_error("ItemDatabase: failed to parse items.json.")
+		return
+	_items = parser.data
+
+
+func get_item(item_id: String) -> Dictionary:
+	return _items.get(item_id, {}).duplicate(true)
+
+
+func item_exists(item_id: String) -> bool:
+	return _items.has(item_id)
+
+
+func get_display_name(item_id: String) -> String:
+	return String(get_item(item_id).get("name", item_id))
+
+
+func get_icon(item_id: String) -> Texture2D:
+	if item_id.is_empty():
+		return null
+	if _icon_cache.has(item_id):
+		return _icon_cache[item_id]
+	var item_data: Dictionary = get_item(item_id)
+	var icon_path: String = String(item_data.get("icon_path", ""))
+	if icon_path.is_empty():
+		return null
+	var texture = load(icon_path)
+	if texture != null:
+		_icon_cache[item_id] = texture
+	return texture
+
+
+func get_default_hotbar() -> Array[String]:
+	return DEFAULT_HOTBAR.duplicate()
+
+
+func is_seed(item_id: String) -> bool:
+	return String(get_item(item_id).get("category", "")) == "seed"
+
+
+func is_tool(item_id: String) -> bool:
+	return String(get_item(item_id).get("category", "")) == "tool"
+
+
+func is_crop(item_id: String) -> bool:
+	return String(get_item(item_id).get("category", "")) == "crop"
+
+
+func is_sellable(item_id: String) -> bool:
+	return is_crop(item_id)
+
+
+func get_crop_id_from_seed(item_id: String) -> String:
+	return String(get_item(item_id).get("crop_id", ""))
+
+
+func get_sell_price(item_id: String) -> int:
+	if CropData.crop_exists(item_id):
+		return int(CropData.get_crop(item_id).get("sell_price", 0))
+	var crop_id: String = String(get_item(item_id).get("crop_id", ""))
+	if CropData.crop_exists(crop_id):
+		return int(CropData.get_crop(crop_id).get("sell_price", 0))
+	return 0

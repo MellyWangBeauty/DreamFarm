@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/ItemDrop.gd" id="1_item_drop_script"]
+
+[node name="ItemDrop" type="Node2D"]
+script = ExtResource("1_item_drop_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+centered = true
+texture_filter = 0
+
+[node name="QuantityLabel" type="Label" parent="."]
+offset_left = -22.0
+offset_top = 14.0
+offset_right = 24.0
+offset_bottom = 34.0
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.25, 0.18, 0.10, 1)
+theme_override_colors/font_shadow_color = Color(1, 1, 1, 0.3)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1

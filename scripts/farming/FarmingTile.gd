@@ -106,7 +106,7 @@ func advance_day() -> void:
 		return
 	if watered_today:
 		growth_day += 1
-		var crop := CropData.get_crop(crop_id)
+		var crop: Dictionary = CropData.get_crop(crop_id)
 		if growth_day >= int(crop.get("growth_days", 0)):
 			state = "grown"
 	_update_visuals()
@@ -115,7 +115,7 @@ func advance_day() -> void:
 func harvest() -> Dictionary:
 	if state != "grown":
 		return {}
-	var result := {
+	var result: Dictionary = {
 		"item_id": crop_id,
 		"amount": 1
 	}
@@ -123,6 +123,10 @@ func harvest() -> Dictionary:
 		GameManager.farm_scene.spawn_harvest_feedback(get_feedback_position())
 	clear_tile()
 	return result
+
+
+func can_harvest() -> bool:
+	return state == "grown"
 
 
 func clear_tile() -> void:

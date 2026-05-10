@@ -19,6 +19,8 @@ var _number_label: Label
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	custom_minimum_size = Vector2(40, 40)
+	clip_contents = true
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_build_ui()
 
 
@@ -87,10 +89,10 @@ func _build_ui() -> void:
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.anchor_right = 1.0
 	_icon.anchor_bottom = 1.0
-	_icon.offset_left = 4.0
-	_icon.offset_top = 4.0
-	_icon.offset_right = -4.0
-	_icon.offset_bottom = -6.0
+	_icon.offset_left = 8.0
+	_icon.offset_top = 8.0
+	_icon.offset_right = -8.0
+	_icon.offset_bottom = -10.0
 	add_child(_icon)
 
 	_count_label = Label.new()
@@ -110,10 +112,10 @@ func _build_ui() -> void:
 	add_child(_count_label)
 
 	_number_label = Label.new()
-	_number_label.offset_left = 2.0
-	_number_label.offset_top = -2.0
-	_number_label.offset_right = 14.0
-	_number_label.offset_bottom = 12.0
+	_number_label.offset_left = 4.0
+	_number_label.offset_top = 1.0
+	_number_label.offset_right = 18.0
+	_number_label.offset_bottom = 14.0
 	_number_label.add_theme_font_size_override("font_size", 9)
 	_number_label.add_theme_color_override("font_color", Color(0.45, 0.27, 0.10))
 	add_child(_number_label)

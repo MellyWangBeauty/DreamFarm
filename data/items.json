@@ -1,74 +1,74 @@
 {
   "hoe": {
-    "id": "hoe",
-    "name": "Hoe",
-    "category": "tool",
-    "icon_path": "res://assets/placeholder/tools/hoe.png"
+	"id": "hoe",
+	"name": "Hoe",
+	"category": "tool",
+	"icon_path": "res://assets/placeholder/tools/hoe.png"
   },
   "watering_can": {
-    "id": "watering_can",
-    "name": "Watering Can",
-    "category": "tool",
-    "icon_path": "res://assets/placeholder/tools/watering_can.png"
+	"id": "watering_can",
+	"name": "Watering Can",
+	"category": "tool",
+	"icon_path": "res://assets/placeholder/tools/watering_can.png"
   },
   "scythe": {
-    "id": "scythe",
-    "name": "Scythe",
-    "category": "tool",
-    "icon_path": "res://assets/placeholder/tools/scythe.png"
+	"id": "scythe",
+	"name": "Scythe",
+	"category": "tool",
+	"icon_path": "res://assets/placeholder/tools/scythe.png"
   },
   "wheat_seed": {
-    "id": "wheat_seed",
-    "name": "Wheat Seeds",
-    "category": "seed",
-    "crop_id": "wheat",
-    "icon_path": "res://assets/placeholder/tools/wheat_seed.png"
+	"id": "wheat_seed",
+	"name": "Wheat Seeds",
+	"category": "seed",
+	"crop_id": "wheat",
+	"icon_path": "res://assets/placeholder/tools/wheat_seed.png"
   },
   "potato_seed": {
-    "id": "potato_seed",
-    "name": "Potato Seeds",
-    "category": "seed",
-    "crop_id": "potato",
-    "icon_path": "res://assets/placeholder/tools/potato_seed.png"
+	"id": "potato_seed",
+	"name": "Potato Seeds",
+	"category": "seed",
+	"crop_id": "potato",
+	"icon_path": "res://assets/placeholder/tools/potato_seed.png"
   },
   "carrot_seed": {
-    "id": "carrot_seed",
-    "name": "Carrot Seeds",
-    "category": "seed",
-    "crop_id": "carrot",
-    "icon_path": "res://assets/placeholder/tools/carrot_seed.png"
+	"id": "carrot_seed",
+	"name": "Carrot Seeds",
+	"category": "seed",
+	"crop_id": "carrot",
+	"icon_path": "res://assets/placeholder/tools/carrot_seed.png"
   },
   "wheat": {
-    "id": "wheat",
-    "name": "Wheat",
-    "category": "crop",
-    "crop_id": "wheat",
-    "icon_path": "res://assets/placeholder/tools/wheat.png"
+	"id": "wheat",
+	"name": "Wheat",
+	"category": "crop",
+	"crop_id": "wheat",
+	"icon_path": "res://assets/placeholder/tools/wheat.png"
   },
   "potato": {
-    "id": "potato",
-    "name": "Potato",
-    "category": "crop",
-    "crop_id": "potato",
-    "icon_path": "res://assets/placeholder/tools/potato.png"
+	"id": "potato",
+	"name": "Potato",
+	"category": "crop",
+	"crop_id": "potato",
+	"icon_path": "res://assets/placeholder/tools/potato.png"
   },
   "carrot": {
-    "id": "carrot",
-    "name": "Carrot",
-    "category": "crop",
-    "crop_id": "carrot",
-    "icon_path": "res://assets/placeholder/tools/carrot.png"
+	"id": "carrot",
+	"name": "Carrot",
+	"category": "crop",
+	"crop_id": "carrot",
+	"icon_path": "res://assets/placeholder/tools/carrot.png"
   },
   "gold": {
-    "id": "gold",
-    "name": "Gold",
-    "category": "currency",
-    "icon_path": "res://assets/placeholder/tools/gold_coin.png"
+	"id": "gold",
+	"name": "Gold",
+	"category": "currency",
+	"icon_path": "res://assets/placeholder/tools/gold_coin.png"
   },
   "wish_stone": {
-    "id": "wish_stone",
-    "name": "Wish Stone",
-    "category": "currency",
-    "icon_path": "res://assets/placeholder/tools/wish_stone.png"
+	"id": "wish_stone",
+	"name": "Wish Stone",
+	"category": "currency",
+	"icon_path": "res://assets/placeholder/tools/wish_stone.png"
   }
 }

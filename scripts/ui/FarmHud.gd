@@ -11,6 +11,15 @@ const WISH_STONE_TEXTURE := preload("res://assets/placeholder/tools/wish_stone.p
 const HOTBAR_SCRIPT := preload("res://scripts/ui/HotbarUI.gd")
 const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
 const DRAG_ITEM_SCRIPT := preload("res://scripts/ui/DragItemUI.gd")
+const HUD_SCALE := 0.38
+const DAY_LABEL_POS := Vector2(108, 38)
+const GOLD_ICON_POS := Vector2(40, 122)
+const GOLD_LABEL_POS := Vector2(190, 126)
+const WISH_ICON_POS := Vector2(40, 248)
+const WISH_LABEL_POS := Vector2(190, 252)
+const CROP_LABEL_POS := Vector2(505, 118)
+const DAY_PROGRESS_LABEL_POS := Vector2(505, 252)
+const ICON_SIZE := Vector2(92, 92)
 
 var panel_rect: TextureRect
 var day_label: Label
@@ -103,23 +112,24 @@ func _build_top_hud() -> void:
 	panel_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	panel_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	panel_rect.position = Vector2(16, 16)
-	panel_rect.size = Vector2(430, 140)
+	var texture_size: Vector2i = TOP_PANEL_TEXTURE.get_size()
+	panel_rect.size = Vector2(texture_size.x, texture_size.y) * HUD_SCALE
 	panel_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	add_child(panel_rect)
 
-	day_label = _make_label(Vector2(28, 20), 18)
-	gold_label = _make_label(Vector2(88, 62), 18)
-	wish_stone_label = _make_label(Vector2(88, 98), 18)
-	crop_label = _make_label(Vector2(220, 62), 15)
-	day_progress_label = _make_label(Vector2(220, 92), 13)
+	day_label = _make_label(DAY_LABEL_POS * HUD_SCALE, 18)
+	gold_label = _make_label(GOLD_LABEL_POS * HUD_SCALE, 18)
+	wish_stone_label = _make_label(WISH_LABEL_POS * HUD_SCALE, 18)
+	crop_label = _make_label(CROP_LABEL_POS * HUD_SCALE, 15)
+	day_progress_label = _make_label(DAY_PROGRESS_LABEL_POS * HUD_SCALE, 13)
 	panel_rect.add_child(day_label)
 	panel_rect.add_child(gold_label)
 	panel_rect.add_child(wish_stone_label)
 	panel_rect.add_child(crop_label)
 	panel_rect.add_child(day_progress_label)
 
-	var gold_icon: TextureRect = _make_icon(GOLD_TEXTURE, Vector2(28, 56), Vector2(40, 40))
-	var wish_icon: TextureRect = _make_icon(WISH_STONE_TEXTURE, Vector2(26, 90), Vector2(40, 40))
+	var gold_icon: TextureRect = _make_icon(GOLD_TEXTURE, GOLD_ICON_POS * HUD_SCALE, ICON_SIZE * HUD_SCALE)
+	var wish_icon: TextureRect = _make_icon(WISH_STONE_TEXTURE, WISH_ICON_POS * HUD_SCALE, ICON_SIZE * HUD_SCALE)
 	panel_rect.add_child(gold_icon)
 	panel_rect.add_child(wish_icon)
 

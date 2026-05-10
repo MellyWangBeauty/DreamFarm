@@ -12,10 +12,10 @@ const HIGHLIGHT_TEXTURE := preload("res://assets/placeholder/hotbar/hotbar_highl
 const SLOT_SCRIPT := preload("res://scripts/ui/ItemSlotUI.gd")
 
 const SLOT_COUNT := 10
-const UI_SCALE := 0.40
-const ORIGINAL_SLOT_SIZE := Vector2(94, 94)
-const ORIGINAL_SLOT_STEP := 113.0
-const ORIGINAL_BACKGROUND_OFFSET := Vector2(132, 39)
+const UI_SCALE := 0.38
+const ORIGINAL_SLOT_SIZE := Vector2(100, 100)
+const ORIGINAL_SLOT_STEP := 114.0
+const ORIGINAL_BACKGROUND_OFFSET := Vector2(160, 84)
 
 var selected_index: int = 0
 var _background: TextureRect
@@ -145,9 +145,9 @@ func _position_highlight() -> void:
 		return
 	var slot_step: float = ORIGINAL_SLOT_STEP * UI_SCALE
 	var slot_origin: Vector2 = _background.position + ORIGINAL_BACKGROUND_OFFSET * UI_SCALE
-	var highlight_size: Vector2 = Vector2(94, 96) * UI_SCALE
+	var highlight_size: Vector2 = Vector2(120, 120) * UI_SCALE
 	_highlight.size = highlight_size
-	_highlight.position = slot_origin + Vector2(selected_index * slot_step, 0) - Vector2(2, 2) * UI_SCALE
+	_highlight.position = slot_origin + Vector2(selected_index * slot_step, 0) - Vector2(12, 10) * UI_SCALE
 
 
 func _refresh_slots() -> void:

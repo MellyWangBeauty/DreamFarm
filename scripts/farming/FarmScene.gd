@@ -5,32 +5,22 @@ const GRID_WIDTH := 6
 const GRID_HEIGHT := 6
 const TILE_SIZE := 48.0
 const HUD_SCRIPT := preload("res://scripts/ui/FarmHud.gd")
-const FLOATING_TEXT_SCRIPT := preload("res://scripts/effects/FloatingText.gd")
-const BURST_EFFECT_SCRIPT := preload("res://scripts/effects/BurstEffect.gd")
+const FEEDBACK_SCRIPT := preload("res://scripts/effects/FarmFeedback.gd")
 const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
-const INTERACT_SFX := preload("res://assets/placeholder/audio/interact.wav")
-const WATER_SFX := preload("res://assets/placeholder/audio/water.wav")
-const HARVEST_SFX := preload("res://assets/placeholder/audio/harvest.wav")
-const COIN_SFX := preload("res://assets/placeholder/audio/coin.wav")
-const PICKUP_SFX := preload("res://assets/placeholder/audio/pickup.wav")
-const UI_CLICK_SFX := preload("res://assets/placeholder/audio/ui_click.wav")
 
 @onready var player = $Player
 @onready var tiles_root: Node2D = $Tiles
 @onready var assistants_root: Node = $Assistants
-@onready var camera = $Player/Camera2D
 
 var _tiles: Dictionary = {}
-var _feedback_root: Node2D
+var _feedback_controller: Node2D
 var _hud
-var _sfx_players: Dictionary = {}
 
 
 func _ready() -> void:
 	GameManager.register_farm_scene(self)
-	_ensure_feedback_root()
+	_ensure_feedback_controller()
 	_ensure_hud()
-	_ensure_audio_players()
 	_create_tiles()
 	_spawn_existing_assistants()
 	queue_redraw()
@@ -44,7 +34,7 @@ func _exit_tree() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _hud != null and _hud.has_method("handle_global_input") and _hud.handle_global_input(event):
 		return
-	if _is_left_click(event):
+	if _is_left_click(event) or _is_key_pressed(event, KEY_SPACE):
 		if not _hud.is_inventory_open():
 			_use_selected_tool()
 	elif _is_key_pressed(event, KEY_N):
@@ -52,9 +42,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_key_pressed(event, KEY_K):
 		var hired: bool = RecruitmentManager.hire_character("aria")
 		if hired:
-			_spawn_world_text("+Aria", Color(0.51, 0.92, 1.0), Vector2(350, 10))
-			_play_sfx("interact")
-			_trigger_screen_shake(2.5, 0.10)
+			_feedback_controller.show_hire_feedback("Aria", Vector2(350, 10))
 		print("Hire aria result: %s" % hired)
 	elif _is_key_pressed(event, KEY_F5):
 		SaveManager.save_game()
@@ -133,19 +121,19 @@ func _use_tile_action(action_name: String) -> void:
 	match action_name:
 		"till":
 			if tile.till():
-				_play_sfx("interact")
+				_feedback_controller.play_interact()
 		"plant":
 			if tile.plant("wheat"):
-				_play_sfx("interact")
+				_feedback_controller.play_interact()
 		"water":
 			if tile.water():
-				_play_sfx("water")
+				_feedback_controller.play_water()
 		"harvest":
 			var harvest_result: Dictionary = tile.harvest()
 			if not harvest_result.is_empty():
 				InventoryManager.add_item(String(harvest_result.get("item_id", "")), int(harvest_result.get("amount", 0)))
-				_spawn_world_text("+%s" % String(harvest_result.get("item_id", "")), Color(1.0, 0.95, 0.72), tile.get_feedback_position() + Vector2(0, -20))
-				_play_sfx("harvest")
+				_feedback_controller.show_text("+%s" % String(harvest_result.get("item_id", "")), Color(1.0, 0.95, 0.72), tile.get_feedback_position() + Vector2(0, -20))
+				_feedback_controller.play_harvest()
 				print("Harvested %s x%d" % [harvest_result.get("item_id", ""), harvest_result.get("amount", 0)])
 
 
@@ -160,24 +148,20 @@ func _use_selected_tool() -> void:
 	_hud.pulse_selected_slot()
 	if selected_item_id == "hoe":
 		if tile.till():
-			_play_sfx("interact")
-			_trigger_screen_shake(2.0, 0.08)
+			_feedback_controller.play_interact()
 	elif selected_item_id == "watering_can":
 		if tile.water():
-			_play_sfx("water")
-			_trigger_screen_shake(1.5, 0.08)
+			_feedback_controller.play_water()
 	elif selected_item_id == "scythe":
 		if tile.can_harvest():
 			var harvest_result: Dictionary = tile.harvest()
 			if not harvest_result.is_empty():
 				spawn_item_drop(String(harvest_result.get("item_id", "")), int(harvest_result.get("amount", 1)), tile.get_feedback_position())
-				_play_sfx("harvest")
-				_trigger_screen_shake(4.0, 0.12)
+				_feedback_controller.play_harvest()
 	elif ItemDatabase.is_seed(selected_item_id):
 		var crop_id: String = ItemDatabase.get_crop_id_from_seed(selected_item_id)
 		if tile.plant(crop_id):
-			_play_sfx("interact")
-			_trigger_screen_shake(1.5, 0.06)
+			_feedback_controller.play_interact()
 
 
 func _get_facing_tile():
@@ -203,8 +187,7 @@ func _sell_all_crops() -> void:
 			sold_lines.append("%s x%d => %d gold" % [item_id, amount, earned])
 	if total_gold > 0:
 		CurrencyManager.add_gold(total_gold)
-		_spawn_world_text("+%d Gold" % total_gold, Color(1.0, 0.88, 0.35), player.global_position + Vector2(0, -48))
-		_play_sfx("coin")
+		_feedback_controller.show_gold_feedback(total_gold, player.global_position + Vector2(0, -48))
 		print("Sold crops:")
 		for line in sold_lines:
 			print(" - %s" % line)
@@ -227,18 +210,18 @@ func _is_left_click(event: InputEvent) -> bool:
 
 
 func spawn_water_feedback(world_position: Vector2) -> void:
-	_spawn_burst(world_position, Color(0.49, 0.82, 1.0), 9, 34.0)
-	_trigger_screen_shake(1.2, 0.06)
+	_feedback_controller.show_water_feedback(world_position)
 
 
 func spawn_harvest_feedback(world_position: Vector2) -> void:
-	_spawn_burst(world_position, Color(1.0, 0.84, 0.35), 12, 46.0)
+	_feedback_controller.show_harvest_feedback(world_position)
 
 
-func _ensure_feedback_root() -> void:
-	_feedback_root = Node2D.new()
-	_feedback_root.name = "Feedback"
-	add_child(_feedback_root)
+func _ensure_feedback_controller() -> void:
+	_feedback_controller = Node2D.new()
+	_feedback_controller.name = "Feedback"
+	_feedback_controller.set_script(FEEDBACK_SCRIPT)
+	add_child(_feedback_controller)
 
 
 func _ensure_hud() -> void:
@@ -250,44 +233,6 @@ func _ensure_hud() -> void:
 	_hud.sell_requested.connect(_on_sell_requested)
 	_hud.ui_clicked.connect(_on_ui_clicked)
 
-
-func _ensure_audio_players() -> void:
-	_sfx_players["interact"] = _make_sfx_player("InteractSfx", INTERACT_SFX)
-	_sfx_players["water"] = _make_sfx_player("WaterSfx", WATER_SFX)
-	_sfx_players["harvest"] = _make_sfx_player("HarvestSfx", HARVEST_SFX)
-	_sfx_players["coin"] = _make_sfx_player("CoinSfx", COIN_SFX)
-	_sfx_players["pickup"] = _make_sfx_player("PickupSfx", PICKUP_SFX)
-	_sfx_players["ui_click"] = _make_sfx_player("UiClickSfx", UI_CLICK_SFX)
-
-
-func _make_sfx_player(player_name: String, stream: AudioStream) -> AudioStreamPlayer:
-	var player_node = AudioStreamPlayer.new()
-	player_node.name = player_name
-	player_node.stream = stream
-	add_child(player_node)
-	return player_node
-
-
-func _play_sfx(sound_name: String) -> void:
-	var player_node = _sfx_players.get(sound_name, null)
-	if player_node != null:
-		player_node.play()
-
-
-func _spawn_world_text(text: String, color: Color, world_position: Vector2) -> void:
-	var text_node = Node2D.new()
-	text_node.set_script(FLOATING_TEXT_SCRIPT)
-	_feedback_root.add_child(text_node)
-	text_node.setup(text, color, world_position)
-
-
-func _spawn_burst(world_position: Vector2, color: Color, amount: int, speed: float) -> void:
-	var burst_node = Node2D.new()
-	burst_node.set_script(BURST_EFFECT_SCRIPT)
-	_feedback_root.add_child(burst_node)
-	burst_node.setup(color, world_position, amount, speed)
-
-
 func spawn_item_drop(item_id: String, amount: int, world_position: Vector2) -> void:
 	var item_drop = ITEM_DROP_SCENE.instantiate()
 	add_child(item_drop)
@@ -297,10 +242,7 @@ func spawn_item_drop(item_id: String, amount: int, world_position: Vector2) -> v
 
 
 func on_item_drop_collected(item_id: String, amount: int, world_position: Vector2) -> void:
-	_play_sfx("pickup")
-	_spawn_world_text("+%s x%d" % [ItemDatabase.get_display_name(item_id), amount], Color(0.90, 1.0, 0.76), world_position + Vector2(0, -16))
-	_spawn_burst(world_position, Color(0.92, 1.0, 0.78), 8, 28.0)
-	_trigger_screen_shake(1.5, 0.07)
+	_feedback_controller.show_pickup_feedback(ItemDatabase.get_display_name(item_id), amount, world_position)
 
 
 func _on_tool_selected(_item_id: String) -> void:
@@ -315,15 +257,8 @@ func _on_sell_requested(item_id: String, amount: int) -> void:
 		return
 	var total_gold: int = sell_price * amount
 	CurrencyManager.add_gold(total_gold)
-	_spawn_world_text("+%d Gold" % total_gold, Color(1.0, 0.88, 0.35), player.global_position + Vector2(0, -56))
-	_play_sfx("coin")
-	_trigger_screen_shake(2.0, 0.09)
+	_feedback_controller.show_gold_feedback(total_gold, player.global_position + Vector2(0, -56))
 
 
 func _on_ui_clicked() -> void:
-	_play_sfx("ui_click")
-
-
-func _trigger_screen_shake(strength: float, duration: float) -> void:
-	if camera != null and camera.has_method("shake"):
-		camera.shake(strength, duration)
+	_feedback_controller.play_ui_click()

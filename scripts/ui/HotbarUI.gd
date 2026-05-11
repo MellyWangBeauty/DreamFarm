@@ -40,6 +40,12 @@ func handle_input(event: InputEvent) -> bool:
 			_hotbar_manager().set_selected_index(next_index)
 			ui_clicked.emit()
 			return true
+	elif event is InputEventMouseButton and event.pressed:
+		var wheel_direction: int = _mouse_wheel_direction(event.button_index)
+		if wheel_direction != 0:
+			_select_relative_slot(wheel_direction)
+			ui_clicked.emit()
+			return true
 	return false
 
 
@@ -184,6 +190,21 @@ func _keycode_to_hotbar_index(keycode: Key) -> int:
 		KEY_0:
 			return 9
 	return -1
+
+
+func _mouse_wheel_direction(button_index: MouseButton) -> int:
+	match button_index:
+		MOUSE_BUTTON_WHEEL_UP:
+			return -1
+		MOUSE_BUTTON_WHEEL_DOWN:
+			return 1
+	return 0
+
+
+func _select_relative_slot(direction: int) -> void:
+	var slot_count: int = max(_slots.size(), 1)
+	var next_index: int = posmod(_hotbar_manager().selected_index + direction, slot_count)
+	_hotbar_manager().set_selected_index(next_index)
 
 
 func _on_slot_left_pressed(slot_type: String, slot_index: int) -> void:

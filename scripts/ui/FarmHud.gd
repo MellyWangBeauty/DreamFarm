@@ -7,19 +7,14 @@ signal ui_clicked
 
 const TOP_PANEL_TEXTURE := preload("res://assets/placeholder/ui/hud_panel.png")
 const GOLD_TEXTURE := preload("res://assets/placeholder/tools/gold_coin.png")
-const WISH_STONE_TEXTURE := preload("res://assets/placeholder/tools/wish_stone.png")
 const HOTBAR_SCRIPT := preload("res://scripts/ui/HotbarUI.gd")
 const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
 const DRAG_ITEM_SCRIPT := preload("res://scripts/ui/DragItemUI.gd")
-const HUD_SCALE := 0.38
-const DAY_LABEL_POS := Vector2(108, 38)
-const GOLD_ICON_POS := Vector2(40, 122)
-const GOLD_LABEL_POS := Vector2(190, 126)
-const WISH_ICON_POS := Vector2(40, 248)
-const WISH_LABEL_POS := Vector2(190, 252)
-const CROP_LABEL_POS := Vector2(505, 118)
-const DAY_PROGRESS_LABEL_POS := Vector2(505, 252)
-const ICON_SIZE := Vector2(92, 92)
+const HUD_SCALE := 0.15
+const DAY_LABEL_POS := Vector2(300, 120)
+const GOLD_ICON_POS := Vector2(350, 250)
+const GOLD_LABEL_POS := Vector2(660, 240)
+const ICON_SIZE := Vector2(150, 150)
 
 var panel_rect: TextureRect
 var day_label: Label
@@ -37,6 +32,7 @@ var _pressed_mouse_position: Vector2 = Vector2.ZERO
 var _dragging: bool = false
 var _drag_source_type: String = ""
 var _drag_source_index: int = -1
+var _last_day_progress: float = 0.0
 
 
 func _ready() -> void:
@@ -117,21 +113,19 @@ func _build_top_hud() -> void:
 	panel_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	add_child(panel_rect)
 
-	day_label = _make_label(DAY_LABEL_POS * HUD_SCALE, 18)
-	gold_label = _make_label(GOLD_LABEL_POS * HUD_SCALE, 18)
-	wish_stone_label = _make_label(WISH_LABEL_POS * HUD_SCALE, 18)
-	crop_label = _make_label(CROP_LABEL_POS * HUD_SCALE, 15)
-	day_progress_label = _make_label(DAY_PROGRESS_LABEL_POS * HUD_SCALE, 13)
+	day_label = _make_label(DAY_LABEL_POS * HUD_SCALE, 14)
+	gold_label = _make_label(GOLD_LABEL_POS * HUD_SCALE, 16)
+	wish_stone_label = _make_label(Vector2.ZERO, 1)
+	crop_label = _make_label(Vector2.ZERO, 1)
+	day_progress_label = _make_label(Vector2.ZERO, 1)
 	panel_rect.add_child(day_label)
 	panel_rect.add_child(gold_label)
-	panel_rect.add_child(wish_stone_label)
-	panel_rect.add_child(crop_label)
-	panel_rect.add_child(day_progress_label)
+	wish_stone_label.visible = false
+	crop_label.visible = false
+	day_progress_label.visible = false
 
 	var gold_icon: TextureRect = _make_icon(GOLD_TEXTURE, GOLD_ICON_POS * HUD_SCALE, ICON_SIZE * HUD_SCALE)
-	var wish_icon: TextureRect = _make_icon(WISH_STONE_TEXTURE, WISH_ICON_POS * HUD_SCALE, ICON_SIZE * HUD_SCALE)
 	panel_rect.add_child(gold_icon)
-	panel_rect.add_child(wish_icon)
 
 
 func _build_hotbar() -> void:
@@ -161,6 +155,7 @@ func _connect_signals() -> void:
 	InventoryManager.inventory_changed.connect(_on_inventory_changed)
 	TimeManager.day_advanced.connect(_on_day_changed)
 	TimeManager.day_progress_changed.connect(_on_day_progress_changed)
+	TimeManager.time_changed.connect(_on_time_changed)
 	_hotbar_manager().selected_slot_changed.connect(_on_hotbar_manager_selected)
 	hotbar_ui.selected_item_changed.connect(_on_hotbar_selected)
 	hotbar_ui.ui_clicked.connect(_relay_ui_click)
@@ -177,8 +172,8 @@ func _connect_signals() -> void:
 
 
 func _refresh_all() -> void:
-	_on_day_changed(TimeManager.day)
-	_on_day_progress_changed(0.0)
+	_on_time_changed(TimeManager.day, TimeManager.get_display_hour(), TimeManager.get_display_minute())
+	_on_day_progress_changed(TimeManager.get_day_progress())
 	_on_gold_changed(CurrencyManager.gold)
 	_on_wish_stone_changed(CurrencyManager.wish_stone)
 	_on_inventory_changed(InventoryManager.get_all_items())
@@ -208,11 +203,16 @@ func _make_icon(texture: Texture2D, pos: Vector2, size: Vector2) -> TextureRect:
 
 
 func _on_day_changed(day: int) -> void:
-	day_label.text = "Day %d" % day
+	_update_day_time_text(day, _last_day_progress)
 
 
 func _on_day_progress_changed(progress: float) -> void:
-	day_progress_label.text = "Next growth tick %d%%" % int(progress * 100.0)
+	_last_day_progress = progress
+	_update_day_time_text(TimeManager.day, progress)
+
+
+func _on_time_changed(day: int, hour: int, minute: int) -> void:
+	day_label.text = "第%d日 %02d:%02d" % [day, hour, minute]
 
 
 func _on_gold_changed(value: int) -> void:
@@ -392,3 +392,8 @@ func _pulse_slot(slot_type: String, slot_index: int) -> void:
 
 func _hotbar_manager() -> Node:
 	return get_node("/root/HotbarManager")
+
+
+func _update_day_time_text(day: int, progress: float) -> void:
+	var _unused_progress: float = progress
+	day_label.text = "第%d日 %02d:%02d" % [day, TimeManager.get_display_hour(), TimeManager.get_display_minute()]

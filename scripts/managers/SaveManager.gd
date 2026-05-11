@@ -11,6 +11,7 @@ func save_game() -> void:
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	var payload: Dictionary = {
 		"day": TimeManager.day,
+		"time_minutes": TimeManager.current_time_minutes,
 		"gold": CurrencyManager.gold,
 		"wish_stone": CurrencyManager.wish_stone,
 		"inventory": InventoryManager.get_all_items(),
@@ -44,6 +45,7 @@ func load_game() -> void:
 	var payload: Dictionary = parser.data
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	TimeManager.set_day(int(payload.get("day", 1)))
+	TimeManager.set_time_minutes(int(payload.get("time_minutes", TimeManager.START_TIME_MINUTES)))
 	CurrencyManager.set_gold(int(payload.get("gold", 0)))
 	CurrencyManager.set_wish_stone(int(payload.get("wish_stone", 0)))
 	if payload.has("inventory_slots"):

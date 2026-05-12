@@ -1,7 +1,7 @@
 {
   "hoe": {
 	"id": "hoe",
-	"name": "Hoe",
+	"name": "锄头",
 	"category": "tool",
 	"icon_path": "res://assets/placeholder/tools/hoe.png",
 	"ui_scale": 0.80,
@@ -10,7 +10,7 @@
   },
   "watering_can": {
 	"id": "watering_can",
-	"name": "Watering Can",
+	"name": "喷壶",
 	"category": "tool",
 	"icon_path": "res://assets/placeholder/tools/watering_can.png",
 	"ui_scale": 1.05,
@@ -19,7 +19,7 @@
   },
   "scythe": {
 	"id": "scythe",
-	"name": "Scythe",
+	"name": "镰刀",
 	"category": "tool",
 	"icon_path": "res://assets/placeholder/tools/scythe.png",
 	"ui_scale": 0.80,
@@ -28,7 +28,7 @@
   },
   "wheat_seed": {
 	"id": "wheat_seed",
-	"name": "Wheat Seeds",
+	"name": "小麦种子",
 	"category": "seed",
 	"crop_id": "wheat",
 	"icon_path": "res://assets/placeholder/tools/wheat_seed.png",
@@ -38,7 +38,7 @@
   },
   "potato_seed": {
 	"id": "potato_seed",
-	"name": "Potato Seeds",
+	"name": "土豆种子",
 	"category": "seed",
 	"crop_id": "potato",
 	"icon_path": "res://assets/placeholder/tools/potato_seed.png",
@@ -48,7 +48,7 @@
   },
   "carrot_seed": {
 	"id": "carrot_seed",
-	"name": "Carrot Seeds",
+	"name": "胡萝卜种子",
 	"category": "seed",
 	"crop_id": "carrot",
 	"icon_path": "res://assets/placeholder/tools/carrot_seed.png",
@@ -58,7 +58,7 @@
   },
   "wheat": {
 	"id": "wheat",
-	"name": "Wheat",
+	"name": "小麦",
 	"category": "crop",
 	"crop_id": "wheat",
 	"icon_path": "res://assets/placeholder/tools/wheat.png",
@@ -68,7 +68,7 @@
   },
   "potato": {
 	"id": "potato",
-	"name": "Potato",
+	"name": "土豆",
 	"category": "crop",
 	"crop_id": "potato",
 	"icon_path": "res://assets/placeholder/tools/potato.png",
@@ -78,7 +78,7 @@
   },
   "carrot": {
 	"id": "carrot",
-	"name": "Carrot",
+	"name": "胡萝卜",
 	"category": "crop",
 	"crop_id": "carrot",
 	"icon_path": "res://assets/placeholder/tools/carrot.png",
@@ -88,7 +88,7 @@
   },
   "gold": {
 	"id": "gold",
-	"name": "Gold",
+	"name": "金币",
 	"category": "currency",
 	"icon_path": "res://assets/placeholder/tools/gold_coin.png",
 	"ui_scale": 1.00,
@@ -97,7 +97,7 @@
   },
   "wish_stone": {
 	"id": "wish_stone",
-	"name": "Wish Stone",
+	"name": "许愿石",
 	"category": "currency",
 	"icon_path": "res://assets/placeholder/tools/wish_stone.png",
 	"ui_scale": 1.00,

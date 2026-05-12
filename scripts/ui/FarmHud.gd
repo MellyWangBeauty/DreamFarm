@@ -1,7 +1,8 @@
-extends CanvasLayer
+﻿extends CanvasLayer
 
 signal tool_selected(item_id: String)
 signal inventory_toggled(opened: bool)
+signal buy_requested(item_id: String, amount: int)
 signal sell_requested(item_id: String, amount: int)
 signal ui_clicked
 
@@ -9,7 +10,9 @@ const TOP_PANEL_TEXTURE := preload("res://assets/placeholder/ui/hud_panel.png")
 const GOLD_TEXTURE := preload("res://assets/placeholder/tools/gold_coin.png")
 const HOTBAR_SCRIPT := preload("res://scripts/ui/HotbarUI.gd")
 const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
+const SHOP_PANEL_SCRIPT := preload("res://scripts/ui/ShopPanel.gd")
 const DRAG_ITEM_SCRIPT := preload("res://scripts/ui/DragItemUI.gd")
+const TRADE_DIALOG_SCRIPT := preload("res://scripts/ui/TradeQuantityDialog.gd")
 const HUD_SCALE := 0.15
 const DAY_LABEL_POS := Vector2(300, 120)
 const GOLD_ICON_POS := Vector2(350, 250)
@@ -24,7 +27,9 @@ var crop_label: Label
 var day_progress_label: Label
 var hotbar_ui
 var inventory_panel
+var shop_panel
 var drag_item_ui
+var trade_dialog
 
 var _pressed_slot_type: String = ""
 var _pressed_slot_index: int = -1
@@ -33,13 +38,16 @@ var _dragging: bool = false
 var _drag_source_type: String = ""
 var _drag_source_index: int = -1
 var _last_day_progress: float = 0.0
+var _shop_open: bool = false
 
 
 func _ready() -> void:
 	_build_top_hud()
 	_build_hotbar()
 	_build_inventory_panel()
+	_build_shop_panel()
 	_build_drag_ui()
+	_build_trade_dialog()
 	_connect_signals()
 	_refresh_all()
 
@@ -60,13 +68,29 @@ func _input(event: InputEvent) -> void:
 func handle_global_input(event: InputEvent) -> bool:
 	if _dragging:
 		return true
+	if trade_dialog.is_open():
+		return true
 	if hotbar_ui.handle_input(event):
 		ui_clicked.emit()
 		return true
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_B or event.keycode == KEY_ESCAPE:
-			if event.keycode == KEY_ESCAPE and not inventory_panel.is_open():
+		if event.keycode == KEY_P:
+			toggle_shop()
+			ui_clicked.emit()
+			return true
+		if event.keycode == KEY_ESCAPE:
+			if _shop_open:
+				close_shop()
+				ui_clicked.emit()
+				return true
+			if not inventory_panel.is_open():
 				return false
+			toggle_inventory()
+			ui_clicked.emit()
+			return true
+		if event.keycode == KEY_B:
+			if _shop_open:
+				return true
 			toggle_inventory()
 			ui_clicked.emit()
 			return true
@@ -86,11 +110,38 @@ func is_dragging() -> bool:
 
 
 func toggle_inventory() -> void:
+	if _shop_open:
+		return
 	var next_state: bool = not inventory_panel.is_open()
-	inventory_panel.set_open(next_state)
+	inventory_panel.set_open(next_state, "center")
 	if not next_state and _dragging:
 		_cancel_drag()
 	inventory_toggled.emit(next_state)
+
+
+func toggle_shop() -> void:
+	if _shop_open:
+		close_shop()
+	else:
+		open_shop()
+
+
+func open_shop() -> void:
+	_shop_open = true
+	inventory_panel.set_open(true, "left")
+	shop_panel.set_open(true)
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(true)
+
+
+func close_shop() -> void:
+	_shop_open = false
+	shop_panel.set_open(false)
+	inventory_panel.set_open(false, "center")
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(false)
 
 
 func pulse_selected_slot() -> void:
@@ -142,11 +193,25 @@ func _build_inventory_panel() -> void:
 	add_child(inventory_panel)
 
 
+func _build_shop_panel() -> void:
+	shop_panel = Control.new()
+	shop_panel.name = "ShopPanel"
+	shop_panel.set_script(SHOP_PANEL_SCRIPT)
+	add_child(shop_panel)
+
+
 func _build_drag_ui() -> void:
 	drag_item_ui = Control.new()
 	drag_item_ui.name = "DragItemUI"
 	drag_item_ui.set_script(DRAG_ITEM_SCRIPT)
 	add_child(drag_item_ui)
+
+
+func _build_trade_dialog() -> void:
+	trade_dialog = Control.new()
+	trade_dialog.name = "TradeQuantityDialog"
+	trade_dialog.set_script(TRADE_DIALOG_SCRIPT)
+	add_child(trade_dialog)
 
 
 func _connect_signals() -> void:
@@ -164,11 +229,15 @@ func _connect_signals() -> void:
 	hotbar_ui.slot_hovered.connect(_on_slot_hovered)
 	hotbar_ui.slot_unhovered.connect(_on_slot_unhovered)
 	inventory_panel.sell_requested.connect(_on_sell_requested)
+	inventory_panel.sell_option_requested.connect(_on_sell_option_requested)
 	inventory_panel.ui_clicked.connect(_relay_ui_click)
 	inventory_panel.slot_left_pressed.connect(_on_slot_left_pressed)
 	inventory_panel.slot_left_released.connect(_on_slot_left_released)
 	inventory_panel.slot_hovered.connect(_on_slot_hovered)
 	inventory_panel.slot_unhovered.connect(_on_slot_unhovered)
+	shop_panel.buy_option_requested.connect(_on_buy_option_requested)
+	shop_panel.ui_clicked.connect(_relay_ui_click)
+	trade_dialog.trade_confirmed.connect(_on_trade_confirmed)
 
 
 func _refresh_all() -> void:
@@ -224,7 +293,7 @@ func _on_wish_stone_changed(value: int) -> void:
 
 
 func _on_inventory_changed(_items: Dictionary) -> void:
-	crop_label.text = "Wheat %d  Potato %d  Carrot %d" % [
+	crop_label.text = "小麦 %d  土豆 %d  胡萝卜 %d" % [
 		InventoryManager.get_item_count("wheat"),
 		InventoryManager.get_item_count("potato"),
 		InventoryManager.get_item_count("carrot")
@@ -241,6 +310,28 @@ func _on_hotbar_selected(item_id: String, _slot_index: int) -> void:
 
 func _on_sell_requested(item_id: String, amount: int) -> void:
 	sell_requested.emit(item_id, amount)
+
+
+func _on_sell_option_requested(item_id: String, max_amount: int) -> void:
+	var unit_price: int = ItemDatabase.get_sell_price(item_id)
+	if unit_price <= 0:
+		return
+	trade_dialog.open_dialog("sell", item_id, max_amount, unit_price)
+
+
+func _on_buy_option_requested(item_id: String, max_amount: int) -> void:
+	var crop_id: String = ItemDatabase.get_crop_id_from_seed(item_id)
+	var unit_price: int = int(CropData.get_crop(crop_id).get("seed_price", 0))
+	if unit_price <= 0:
+		return
+	trade_dialog.open_dialog("buy", item_id, max_amount, unit_price)
+
+
+func _on_trade_confirmed(action_type: String, item_id: String, amount: int) -> void:
+	if action_type == "sell":
+		sell_requested.emit(item_id, amount)
+	elif action_type == "buy":
+		buy_requested.emit(item_id, amount)
 
 
 func _relay_ui_click() -> void:
@@ -397,3 +488,4 @@ func _hotbar_manager() -> Node:
 func _update_day_time_text(day: int, progress: float) -> void:
 	var _unused_progress: float = progress
 	day_label.text = "第%d日 %02d:%02d" % [day, TimeManager.get_display_hour(), TimeManager.get_display_minute()]
+

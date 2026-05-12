@@ -12,16 +12,16 @@ func _ready() -> void:
 
 func _load_data() -> void:
 	if not FileAccess.file_exists(CROPS_DATA_PATH):
-		push_error("CropData: crops.json not found.")
+		push_error("作物数据：未找到 crops.json。")
 		return
 	var file := FileAccess.open(CROPS_DATA_PATH, FileAccess.READ)
 	if file == null:
-		push_error("CropData: failed to open crops.json.")
+		push_error("作物数据：打开 crops.json 失败。")
 		return
 	var parser := JSON.new()
 	var result := parser.parse(file.get_as_text())
 	if result != OK or typeof(parser.data) != TYPE_DICTIONARY:
-		push_error("CropData: failed to parse crops.json.")
+		push_error("作物数据：解析 crops.json 失败。")
 		return
 	_crops = parser.data
 

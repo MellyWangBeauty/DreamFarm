@@ -1,6 +1,5 @@
 extends Node2D
 
-
 const GRID_WIDTH := 6
 const GRID_HEIGHT := 6
 const TILE_SIZE := 48.0
@@ -15,6 +14,8 @@ const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
 var _tiles: Dictionary = {}
 var _feedback_controller: Node2D
 var _hud
+var _shop_sell_items: Array[String] = ["wheat", "potato", "carrot"]
+var _shop_buy_items: Array[String] = ["wheat_seed", "potato_seed", "carrot_seed"]
 
 
 func _ready() -> void:
@@ -24,7 +25,7 @@ func _ready() -> void:
 	_create_tiles()
 	_spawn_existing_assistants()
 	queue_redraw()
-	print("FarmScene ready. 1-0 hotbar, LMB use, B bag, N next day, K hire aria, F5 save, F9 load.")
+	print("农场场景已就绪。1-0 切换快捷栏，鼠标左键/空格使用工具，B 打开背包，P 打开商店，N 下一天，K 招募 Aria，F5 保存，F9 读取。")
 
 
 func _exit_tree() -> void:
@@ -42,8 +43,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_key_pressed(event, KEY_K):
 		var hired: bool = RecruitmentManager.hire_character("aria")
 		if hired:
-			_feedback_controller.show_hire_feedback("Aria", Vector2(350, 10))
-		print("Hire aria result: %s" % hired)
+			_feedback_controller.show_hire_feedback("阿丽亚", Vector2(350, 10))
+		print("招募阿丽亚结果：%s" % hired)
 	elif _is_key_pressed(event, KEY_F5):
 		SaveManager.save_game()
 	elif _is_key_pressed(event, KEY_F9):
@@ -131,10 +132,9 @@ func _use_tile_action(action_name: String) -> void:
 		"harvest":
 			var harvest_result: Dictionary = tile.harvest()
 			if not harvest_result.is_empty():
-				InventoryManager.add_item(String(harvest_result.get("item_id", "")), int(harvest_result.get("amount", 0)))
-				_feedback_controller.show_text("+%s" % String(harvest_result.get("item_id", "")), Color(1.0, 0.95, 0.72), tile.get_feedback_position() + Vector2(0, -20))
+				spawn_item_drop(String(harvest_result.get("item_id", "")), int(harvest_result.get("amount", 1)), tile.get_feedback_position())
 				_feedback_controller.play_harvest()
-				print("Harvested %s x%d" % [harvest_result.get("item_id", ""), harvest_result.get("amount", 0)])
+				print("收获了 %s x%d" % [harvest_result.get("item_id", ""), harvest_result.get("amount", 0)])
 
 
 func _use_selected_tool() -> void:
@@ -188,12 +188,12 @@ func _sell_all_crops() -> void:
 	if total_gold > 0:
 		CurrencyManager.add_gold(total_gold)
 		_feedback_controller.show_gold_feedback(total_gold, player.global_position + Vector2(0, -48))
-		print("Sold crops:")
+		print("已出售作物：")
 		for line in sold_lines:
 			print(" - %s" % line)
-		print("Total gold earned: %d | Current gold: %d" % [total_gold, CurrencyManager.gold])
+		print("总计获得金币：%d | 当前金币：%d" % [total_gold, CurrencyManager.gold])
 	else:
-		print("No crops available to sell.")
+		print("没有可出售的作物。")
 
 
 func _spawn_existing_assistants() -> void:
@@ -230,15 +230,17 @@ func _ensure_hud() -> void:
 	_hud.set_script(HUD_SCRIPT)
 	add_child(_hud)
 	_hud.tool_selected.connect(_on_tool_selected)
+	_hud.buy_requested.connect(_on_buy_requested)
 	_hud.sell_requested.connect(_on_sell_requested)
 	_hud.ui_clicked.connect(_on_ui_clicked)
+
 
 func spawn_item_drop(item_id: String, amount: int, world_position: Vector2) -> void:
 	var item_drop = ITEM_DROP_SCENE.instantiate()
 	add_child(item_drop)
 	item_drop.set_spawn_world_position(world_position)
 	item_drop.setup(item_id, amount)
-	item_drop.launch(Vector2(randf_range(-42.0, 42.0), randf_range(-12.0, 16.0)))
+	item_drop.launch(Vector2.ZERO)
 
 
 func on_item_drop_collected(item_id: String, amount: int, world_position: Vector2) -> void:
@@ -250,6 +252,8 @@ func _on_tool_selected(_item_id: String) -> void:
 
 
 func _on_sell_requested(item_id: String, amount: int) -> void:
+	if not _shop_sell_items.has(item_id):
+		return
 	var sell_price: int = ItemDatabase.get_sell_price(item_id)
 	if sell_price <= 0:
 		return
@@ -258,6 +262,30 @@ func _on_sell_requested(item_id: String, amount: int) -> void:
 	var total_gold: int = sell_price * amount
 	CurrencyManager.add_gold(total_gold)
 	_feedback_controller.show_gold_feedback(total_gold, player.global_position + Vector2(0, -56))
+
+
+func _on_buy_requested(item_id: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	if not _shop_buy_items.has(item_id):
+		return
+	var crop_id: String = ItemDatabase.get_crop_id_from_seed(item_id)
+	if crop_id.is_empty():
+		return
+	var seed_price: int = int(CropData.get_crop(crop_id).get("seed_price", 0))
+	if seed_price <= 0:
+		return
+	var total_gold: int = seed_price * amount
+	if not CurrencyManager.spend_gold(total_gold):
+		print("金币不足，无法购买 %s x%d。" % [ItemDatabase.get_display_name(item_id), amount])
+		return
+	InventoryManager.add_item(item_id, amount)
+	_feedback_controller.show_text(
+		"购入 %s x%d" % [ItemDatabase.get_display_name(item_id), amount],
+		Color(0.74, 0.95, 1.0),
+		player.global_position + Vector2(0, -72)
+	)
+	_feedback_controller.play_ui_click()
 
 
 func _on_ui_clicked() -> void:

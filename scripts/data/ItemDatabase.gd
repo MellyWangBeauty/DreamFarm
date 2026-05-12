@@ -1,6 +1,5 @@
 extends Node
 
-
 const ITEMS_DATA_PATH := "res://data/items.json"
 const DEFAULT_HOTBAR: Array[String] = [
 	"hoe",
@@ -25,16 +24,16 @@ func _ready() -> void:
 
 func _load_data() -> void:
 	if not FileAccess.file_exists(ITEMS_DATA_PATH):
-		push_error("ItemDatabase: items.json not found.")
+		push_error("物品数据库：未找到 items.json。")
 		return
-	var file = FileAccess.open(ITEMS_DATA_PATH, FileAccess.READ)
+	var file: FileAccess = FileAccess.open(ITEMS_DATA_PATH, FileAccess.READ)
 	if file == null:
-		push_error("ItemDatabase: failed to open items.json.")
+		push_error("物品数据库：打开 items.json 失败。")
 		return
-	var parser = JSON.new()
-	var result = parser.parse(file.get_as_text())
+	var parser: JSON = JSON.new()
+	var result: int = parser.parse(file.get_as_text())
 	if result != OK or typeof(parser.data) != TYPE_DICTIONARY:
-		push_error("ItemDatabase: failed to parse items.json.")
+		push_error("物品数据库：解析 items.json 失败。")
 		return
 	_items = parser.data
 
@@ -60,7 +59,7 @@ func get_icon(item_id: String) -> Texture2D:
 	var icon_path: String = String(item_data.get("icon_path", ""))
 	if icon_path.is_empty():
 		return null
-	var texture = load(icon_path)
+	var texture: Texture2D = load(icon_path)
 	if texture != null:
 		_icon_cache[item_id] = texture
 	return texture

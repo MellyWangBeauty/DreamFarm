@@ -14,10 +14,10 @@ func _ready() -> void:
 
 func add_item(item_id: String, amount: int) -> void:
 	if item_id.strip_edges().is_empty():
-		push_warning("InventoryManager.add_item: item_id is empty.")
+		push_warning("背包管理器：物品 ID 不能为空。")
 		return
 	if amount <= 0:
-		push_warning("InventoryManager.add_item: amount must be greater than zero.")
+		push_warning("背包管理器：添加数量必须大于 0。")
 		return
 	var remaining: int = amount
 	for index in range(_slots.size()):
@@ -30,7 +30,7 @@ func add_item(item_id: String, amount: int) -> void:
 	if remaining > 0:
 		var empty_index: int = find_first_empty_slot()
 		if empty_index == -1:
-			push_warning("InventoryManager.add_item: inventory is full.")
+			push_warning("背包管理器：背包已满。")
 			return
 		_slots[empty_index] = _make_slot_data(item_id, remaining)
 	_emit_changed()
@@ -38,10 +38,10 @@ func add_item(item_id: String, amount: int) -> void:
 
 func remove_item(item_id: String, amount: int) -> bool:
 	if item_id.strip_edges().is_empty():
-		push_warning("InventoryManager.remove_item: item_id is empty.")
+		push_warning("背包管理器：物品 ID 不能为空。")
 		return false
 	if amount <= 0:
-		push_warning("InventoryManager.remove_item: amount must be greater than zero.")
+		push_warning("背包管理器：移除数量必须大于 0。")
 		return false
 	var current_amount: int = get_item_count(item_id)
 	if current_amount < amount:

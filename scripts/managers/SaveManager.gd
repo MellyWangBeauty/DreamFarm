@@ -22,25 +22,25 @@ func save_game() -> void:
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
-		push_error("SaveManager.save_game: failed to open save file.")
+		push_error("保存管理器：打开存档文件失败。")
 		return
 	file.store_string(JSON.stringify(payload, "\t"))
-	print("SaveManager: game saved to %s" % SAVE_PATH)
+	print("保存管理器：游戏已保存到 %s" % SAVE_PATH)
 
 
 func load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
-		push_warning("SaveManager.load_game: save file does not exist.")
+		push_warning("保存管理器：存档文件不存在。")
 		return
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file == null:
-		push_error("SaveManager.load_game: failed to read save file.")
+		push_error("保存管理器：读取存档文件失败。")
 		return
 	var raw_text: String = file.get_as_text()
 	var parser: JSON = JSON.new()
 	var result: int = parser.parse(raw_text)
 	if result != OK:
-		push_error("SaveManager.load_game: failed to parse save file.")
+		push_error("保存管理器：解析存档文件失败。")
 		return
 	var payload: Dictionary = parser.data
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
@@ -59,4 +59,4 @@ func load_game() -> void:
 	RecruitmentManager.set_hired_character_ids(payload.get("hired_characters", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_farm_tile_save_data"):
 		GameManager.farm_scene.load_farm_tile_save_data(payload.get("farm_tiles", []))
-	print("SaveManager: game loaded from %s" % SAVE_PATH)
+	print("保存管理器：游戏已从 %s 读取。" % SAVE_PATH)

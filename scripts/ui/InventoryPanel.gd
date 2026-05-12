@@ -1,6 +1,7 @@
 extends Control
 
 signal sell_requested(item_id: String, amount: int)
+signal sell_option_requested(item_id: String, max_amount: int)
 signal ui_clicked
 signal slot_left_pressed(slot_type: String, slot_index: int)
 signal slot_left_released(slot_type: String, slot_index: int)
@@ -17,10 +18,15 @@ const UI_SCALE := 0.70
 const ORIGINAL_SLOT_SIZE := Vector2(80, 80)
 const ORIGINAL_SLOT_STEP := Vector2(90, 90)
 const ORIGINAL_GRID_OFFSET := Vector2(220, 140)
+const SHOP_SELL_ITEMS: Array[String] = ["wheat", "potato", "carrot"]
 
 var _panel: TextureRect
 var _slots: Array = []
 var _tooltip: Label
+var _context_menu: PopupMenu
+var _pending_item_id: String = ""
+var _pending_amount: int = 0
+var _layout_mode: String = "center"
 
 
 func _ready() -> void:
@@ -32,12 +38,15 @@ func _ready() -> void:
 	_refresh_slots()
 
 
-func set_open(value: bool) -> void:
+func set_open(value: bool, layout_mode: String = "") -> void:
+	if not layout_mode.is_empty():
+		_layout_mode = layout_mode
 	visible = value
 	if visible:
 		_refresh_slots()
 		_update_layout()
 		_tooltip.visible = false
+		_context_menu.hide()
 
 
 func is_open() -> bool:
@@ -100,6 +109,11 @@ func _build_ui() -> void:
 	_tooltip.add_theme_constant_override("shadow_offset_y", 1)
 	add_child(_tooltip)
 
+	_context_menu = PopupMenu.new()
+	_context_menu.add_item("卖出", 0)
+	_context_menu.id_pressed.connect(_on_context_menu_id_pressed)
+	add_child(_context_menu)
+
 	for index in range(SLOT_COUNT):
 		var slot: Panel = Panel.new()
 		slot.set_script(SLOT_SCRIPT)
@@ -120,7 +134,10 @@ func _update_layout() -> void:
 	var texture_size: Vector2i = PANEL_TEXTURE.get_size()
 	var panel_size: Vector2 = Vector2(texture_size.x, texture_size.y) * UI_SCALE
 	_panel.size = panel_size
-	_panel.position = (viewport_size - panel_size) * 0.5
+	if _layout_mode == "left":
+		_panel.position = Vector2(24.0, (viewport_size.y - panel_size.y) * 0.5)
+	else:
+		_panel.position = (viewport_size - panel_size) * 0.5
 	var slot_size: Vector2 = ORIGINAL_SLOT_SIZE * UI_SCALE
 	var slot_step: Vector2 = ORIGINAL_SLOT_STEP * UI_SCALE
 	var grid_offset: Vector2 = ORIGINAL_GRID_OFFSET * UI_SCALE
@@ -152,8 +169,12 @@ func _on_slot_right_clicked(_slot_type: String, slot_index: int) -> void:
 	var amount: int = int(slot_data.get("amount", 0))
 	if item_id.is_empty() or amount <= 0:
 		return
-	if ItemDatabase.is_sellable(item_id):
-		sell_requested.emit(item_id, amount)
+	if ItemDatabase.is_sellable(item_id) and SHOP_SELL_ITEMS.has(item_id):
+		_pending_item_id = item_id
+		_pending_amount = amount
+		_context_menu.position = get_viewport().get_mouse_position()
+		_context_menu.reset_size()
+		_context_menu.popup()
 
 
 func _on_slot_hovered(slot_type: String, slot_index: int) -> void:
@@ -172,3 +193,11 @@ func _on_slot_hovered(slot_type: String, slot_index: int) -> void:
 func _on_slot_unhovered(slot_type: String, slot_index: int) -> void:
 	_tooltip.visible = false
 	slot_unhovered.emit(slot_type, slot_index)
+
+
+func _on_context_menu_id_pressed(action_id: int) -> void:
+	if action_id != 0:
+		return
+	if _pending_item_id.is_empty() or _pending_amount <= 0:
+		return
+	sell_option_requested.emit(_pending_item_id, _pending_amount)

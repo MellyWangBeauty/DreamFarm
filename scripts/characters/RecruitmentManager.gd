@@ -13,16 +13,16 @@ func _ready() -> void:
 
 func _load_data() -> void:
 	if not FileAccess.file_exists(CHARACTERS_DATA_PATH):
-		push_error("RecruitmentManager: characters.json not found.")
+		push_error("招募管理器：未找到 characters.json。")
 		return
 	var file := FileAccess.open(CHARACTERS_DATA_PATH, FileAccess.READ)
 	if file == null:
-		push_error("RecruitmentManager: failed to open characters.json.")
+		push_error("招募管理器：打开 characters.json 失败。")
 		return
 	var parser := JSON.new()
 	var result := parser.parse(file.get_as_text())
 	if result != OK or typeof(parser.data) != TYPE_DICTIONARY:
-		push_error("RecruitmentManager: failed to parse characters.json.")
+		push_error("招募管理器：解析 characters.json 失败。")
 		return
 	_characters = parser.data
 
@@ -37,7 +37,7 @@ func list_available_characters() -> Array:
 
 func hire_character(character_id: String) -> bool:
 	if not _characters.has(character_id):
-		push_warning("RecruitmentManager.hire_character: unknown character '%s'." % character_id)
+		push_warning("招募管理器：未知角色 '%s'。" % character_id)
 		return false
 	if _hired_characters.get(character_id, false):
 		return true
@@ -47,7 +47,7 @@ func hire_character(character_id: String) -> bool:
 		return false
 	_hired_characters[character_id] = true
 	_assign_hired_assistant(character_id)
-	print("RecruitmentManager: hired %s." % character_id)
+	print("招募管理器：已招募 %s。" % character_id)
 	return true
 
 

@@ -71,7 +71,7 @@ func show_pickup_feedback(item_name: String, amount: int, world_position: Vector
 
 func show_gold_feedback(amount: int, world_position: Vector2) -> void:
 	play_coin()
-	show_text("+%d Gold" % amount, Color(1.0, 0.88, 0.35), world_position)
+	show_text("+%d 金币" % amount, Color(1.0, 0.88, 0.35), world_position)
 
 
 func show_hire_feedback(character_name: String, world_position: Vector2) -> void:

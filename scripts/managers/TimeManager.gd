@@ -80,7 +80,7 @@ func next_day() -> void:
 	_tick_elapsed = 0.0
 	for tile in _registered_tiles:
 		tile.reset_daily_state()
-	print("TimeManager: day %d" % day)
+	print("时间管理器：第 %d 天开始。" % day)
 	day_started.emit(day)
 	_emit_time_signals()
 	day_advanced.emit(day)

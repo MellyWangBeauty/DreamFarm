@@ -13,7 +13,6 @@ var _velocity: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	_spawn_position = global_position
 	z_index = 15
 
 
@@ -30,6 +29,11 @@ func setup(new_item_id: String, new_amount: int) -> void:
 
 func launch(initial_velocity: Vector2) -> void:
 	_velocity = initial_velocity
+
+
+func set_spawn_world_position(world_position: Vector2) -> void:
+	global_position = world_position
+	_spawn_position = global_position
 
 
 func _process(delta: float) -> void:

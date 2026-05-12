@@ -37,3 +37,20 @@ func get_all_crops() -> Dictionary:
 func crop_exists(crop_id: String) -> bool:
 	return _crops.has(crop_id)
 
+
+func get_growth_stage_count(crop_id: String) -> int:
+	var crop_data: Dictionary = get_crop(crop_id)
+	return maxi(int(crop_data.get("growth_stage_count", 4)), 2)
+
+
+func get_stage_duration_minutes(crop_id: String) -> int:
+	var crop_data: Dictionary = get_crop(crop_id)
+	var stage_duration_variant: Variant = crop_data.get("stage_duration", null)
+	if stage_duration_variant is Dictionary:
+		var stage_duration: Dictionary = stage_duration_variant
+		var days: int = maxi(int(stage_duration.get("days", 0)), 0)
+		var hours: int = maxi(int(stage_duration.get("hours", 0)), 0)
+		var minutes: int = maxi(int(stage_duration.get("minutes", 0)), 0)
+		var total_minutes: int = days * TimeManager.get_minutes_per_day() + hours * 60 + minutes
+		return maxi(total_minutes, 1)
+	return maxi(int(crop_data.get("stage_minutes", 10)), 1)

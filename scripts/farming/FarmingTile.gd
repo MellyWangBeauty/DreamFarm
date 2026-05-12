@@ -35,13 +35,11 @@ enum TileState {
 	GROWN
 }
 
-
 const TILE_SIZE := 48.0
-const PRE_GROWN_STAGE_COUNT: int = 3
 
 var state: String = "empty"
 var crop_id: String = ""
-var growth_day: int = 0
+var current_stage: int = 0
 var growth_minutes: int = 0
 var watered_today: bool = false
 var grid_position: Vector2i = Vector2i.ZERO
@@ -80,7 +78,7 @@ func plant(new_crop_id: String) -> bool:
 		return false
 	state = "planted"
 	crop_id = new_crop_id
-	growth_day = 0
+	current_stage = 0
 	growth_minutes = 0
 	watered_today = false
 	_update_visuals()
@@ -117,9 +115,10 @@ func advance_time(minutes_passed: int) -> void:
 	var stage_minutes: int = _get_stage_minutes()
 	if stage_minutes <= 0:
 		return
+	var growth_stage_count: int = _get_growth_stage_count()
 	growth_minutes += max(minutes_passed, 0)
-	growth_day = int(growth_minutes / stage_minutes)
-	if growth_minutes >= stage_minutes * PRE_GROWN_STAGE_COUNT:
+	current_stage = mini(int(growth_minutes / stage_minutes), growth_stage_count - 1)
+	if growth_minutes >= stage_minutes * (growth_stage_count - 1):
 		state = "grown"
 	_update_visuals()
 
@@ -144,7 +143,7 @@ func can_harvest() -> bool:
 func clear_tile() -> void:
 	state = "empty"
 	crop_id = ""
-	growth_day = 0
+	current_stage = 0
 	growth_minutes = 0
 	watered_today = false
 	_update_visuals()
@@ -156,7 +155,8 @@ func get_save_data() -> Dictionary:
 		"grid_y": grid_position.y,
 		"state": state,
 		"crop_id": crop_id,
-		"growth_day": growth_day,
+		"current_stage": current_stage,
+		"growth_day": current_stage,
 		"growth_minutes": growth_minutes,
 		"watered_today": watered_today
 	}
@@ -165,12 +165,13 @@ func get_save_data() -> Dictionary:
 func load_save_data(data: Dictionary) -> void:
 	state = String(data.get("state", "empty"))
 	crop_id = String(data.get("crop_id", ""))
-	growth_day = int(data.get("growth_day", 0))
+	current_stage = int(data.get("current_stage", data.get("growth_day", 0)))
 	growth_minutes = int(data.get("growth_minutes", 0))
-	if growth_minutes <= 0 and not crop_id.is_empty() and growth_day > 0:
-		growth_minutes = growth_day * _get_stage_minutes()
+	current_stage = clampi(current_stage, 0, _get_growth_stage_count() - 1)
+	if growth_minutes <= 0 and not crop_id.is_empty() and current_stage > 0:
+		growth_minutes = current_stage * _get_stage_minutes()
 	watered_today = bool(data.get("watered_today", false))
-	if state == "planted" and growth_minutes >= _get_stage_minutes() * PRE_GROWN_STAGE_COUNT:
+	if state == "planted" and growth_minutes >= _get_stage_minutes() * (_get_growth_stage_count() - 1):
 		state = "grown"
 	_update_visuals()
 
@@ -210,11 +211,10 @@ func _get_crop_texture() -> Texture2D:
 	var textures: Array = CROP_STAGE_TEXTURES.get(crop_id, [])
 	if textures.is_empty():
 		return null
+	var mature_texture_index: int = textures.size() - 1
 	if state == "grown":
-		return textures[3]
-	var stage_minutes: int = _get_stage_minutes()
-	var stage_index: int = mini(int(floor(float(growth_minutes) / float(maxi(stage_minutes, 1)))), 2)
-	return textures[stage_index]
+		return textures[mature_texture_index]
+	return textures[_get_planted_texture_index(textures.size())]
 
 
 func _apply_sprite_texture(sprite: Sprite2D, texture: Texture2D, target_size: float) -> void:
@@ -226,5 +226,18 @@ func _apply_sprite_texture(sprite: Sprite2D, texture: Texture2D, target_size: fl
 
 
 func _get_stage_minutes() -> int:
-	var crop_data: Dictionary = CropData.get_crop(crop_id)
-	return maxi(int(crop_data.get("stage_minutes", 10)), 1)
+	return CropData.get_stage_duration_minutes(crop_id)
+
+
+func _get_growth_stage_count() -> int:
+	return CropData.get_growth_stage_count(crop_id)
+
+
+func _get_planted_texture_index(texture_count: int) -> int:
+	var planted_texture_count: int = maxi(texture_count - 1, 1)
+	var planted_stage_count: int = maxi(_get_growth_stage_count() - 1, 1)
+	var normalized_stage: int = mini(current_stage, planted_stage_count - 1)
+	return mini(
+		int(floor(float(normalized_stage) * float(planted_texture_count) / float(planted_stage_count))),
+		planted_texture_count - 1
+	)

@@ -12,6 +12,9 @@ var font_size: int = 18
 func setup(text: String, color: Color, world_position: Vector2) -> void:
 	display_text = text
 	display_color = color
+	top_level = true
+	z_as_relative = false
+	z_index = 1000
 	global_position = world_position
 	queue_redraw()
 
@@ -35,4 +38,3 @@ func _draw() -> void:
 	var baseline := Vector2(-48, 0)
 	draw_string(font, baseline + Vector2(2, 2), display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow_color)
 	draw_string(font, baseline, display_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
-

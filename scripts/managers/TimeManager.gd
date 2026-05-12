@@ -61,6 +61,10 @@ func get_day_progress() -> float:
 	return clampf((elapsed_minutes + partial_tick) / total_day_minutes, 0.0, 1.0)
 
 
+func get_minutes_per_day() -> int:
+	return END_TIME_MINUTES - START_TIME_MINUTES
+
+
 func _process(delta: float) -> void:
 	_tick_elapsed += delta
 	while _tick_elapsed >= seconds_per_time_tick:

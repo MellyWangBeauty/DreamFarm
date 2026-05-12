@@ -236,7 +236,7 @@ func _ensure_hud() -> void:
 func spawn_item_drop(item_id: String, amount: int, world_position: Vector2) -> void:
 	var item_drop = ITEM_DROP_SCENE.instantiate()
 	add_child(item_drop)
-	item_drop.global_position = world_position
+	item_drop.set_spawn_world_position(world_position)
 	item_drop.setup(item_id, amount)
 	item_drop.launch(Vector2(randf_range(-42.0, 42.0), randf_range(-12.0, 16.0)))
 

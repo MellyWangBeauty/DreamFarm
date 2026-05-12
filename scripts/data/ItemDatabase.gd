@@ -66,6 +66,22 @@ func get_icon(item_id: String) -> Texture2D:
 	return texture
 
 
+func get_ui_scale(item_id: String) -> float:
+	if item_id.is_empty():
+		return 1.0
+	return float(get_item(item_id).get("ui_scale", 1.0))
+
+
+func get_ui_offset(item_id: String) -> Vector2:
+	if item_id.is_empty():
+		return Vector2.ZERO
+	var item_data: Dictionary = get_item(item_id)
+	return Vector2(
+		float(item_data.get("ui_offset_x", 0.0)),
+		float(item_data.get("ui_offset_y", 0.0))
+	)
+
+
 func get_default_hotbar() -> Array[String]:
 	return DEFAULT_HOTBAR.duplicate()
 

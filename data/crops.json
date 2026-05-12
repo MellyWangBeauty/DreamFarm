@@ -2,24 +2,36 @@
   "wheat": {
 	"id": "wheat",
 	"name": "Wheat",
-	"growth_days": 2,
-	"stage_minutes": 10,
+	"growth_stage_count": 4,
+	"stage_duration": {
+	  "days": 0,
+	  "hours": 0,
+	  "minutes": 10
+	},
 	"seed_price": 10,
 	"sell_price": 20
   },
   "potato": {
 	"id": "potato",
 	"name": "Potato",
-	"growth_days": 3,
-	"stage_minutes": 20,
+	"growth_stage_count": 4,
+	"stage_duration": {
+	  "days": 0,
+	  "hours": 0,
+	  "minutes": 20
+	},
 	"seed_price": 15,
 	"sell_price": 35
   },
   "carrot": {
 	"id": "carrot",
 	"name": "Carrot",
-	"growth_days": 4,
-	"stage_minutes": 30,
+	"growth_stage_count": 4,
+	"stage_duration": {
+	  "days": 0,
+	  "hours": 0,
+	  "minutes": 30
+	},
 	"seed_price": 20,
 	"sell_price": 50
   }

@@ -6,6 +6,9 @@ signal right_clicked(slot_type: String, slot_index: int)
 signal hovered(slot_type: String, slot_index: int)
 signal unhovered(slot_type: String, slot_index: int)
 
+const BASE_ICON_INSET := 10.0
+const BASE_ICON_SCALE := 1.0
+
 var slot_type: String = ""
 var slot_index: int = -1
 var item_id: String = ""
@@ -39,6 +42,7 @@ func set_slot_data(slot_data: Dictionary) -> void:
 	_icon.texture = ItemDatabase.get_icon(item_id)
 	_icon.visible = not item_id.is_empty()
 	_count_label.text = str(amount) if amount > 1 else ""
+	_update_icon_layout()
 
 
 func set_hover_style(valid: bool) -> void:
@@ -56,6 +60,11 @@ func pulse() -> void:
 func _process(delta: float) -> void:
 	if scale.x > 1.0:
 		scale = scale.lerp(Vector2.ONE, minf(delta * 12.0, 1.0))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_update_icon_layout()
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -89,10 +98,6 @@ func _build_ui() -> void:
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.anchor_right = 1.0
 	_icon.anchor_bottom = 1.0
-	_icon.offset_left = 10.0
-	_icon.offset_top = 10.0
-	_icon.offset_right = -10.0
-	_icon.offset_bottom = -10.0
 	add_child(_icon)
 
 	_count_label = Label.new()
@@ -119,3 +124,21 @@ func _build_ui() -> void:
 	_number_label.add_theme_font_size_override("font_size", 9)
 	_number_label.add_theme_color_override("font_color", Color(0.45, 0.27, 0.10))
 	add_child(_number_label)
+
+	_update_icon_layout()
+
+
+func _update_icon_layout() -> void:
+	if _icon == null:
+		return
+	var ui_scale: float = ItemDatabase.get_ui_scale(item_id)
+	var ui_offset: Vector2 = ItemDatabase.get_ui_offset(item_id)
+	var scale_delta: float = (BASE_ICON_SCALE - ui_scale) * size.x * 0.18
+	var left_inset: float = BASE_ICON_INSET + scale_delta + ui_offset.x
+	var top_inset: float = BASE_ICON_INSET + scale_delta + ui_offset.y
+	var right_inset: float = BASE_ICON_INSET + scale_delta - ui_offset.x
+	var bottom_inset: float = BASE_ICON_INSET + scale_delta - ui_offset.y
+	_icon.offset_left = left_inset
+	_icon.offset_top = top_inset
+	_icon.offset_right = -right_inset
+	_icon.offset_bottom = -bottom_inset

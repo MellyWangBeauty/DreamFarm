@@ -93,6 +93,10 @@ func is_tool(item_id: String) -> bool:
 	return String(get_item(item_id).get("category", "")) == "tool"
 
 
+func is_stackable(item_id: String) -> bool:
+	return item_exists(item_id) and not is_tool(item_id)
+
+
 func is_crop(item_id: String) -> bool:
 	return String(get_item(item_id).get("category", "")) == "crop"
 

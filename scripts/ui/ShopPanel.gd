@@ -9,9 +9,6 @@ const SLOT_SCRIPT := preload("res://scripts/ui/ItemSlotUI.gd")
 var _background: Panel
 var _title_label: Label
 var _rows: Array = []
-var _context_menu: PopupMenu
-var _pending_item_id: String = ""
-var _pending_max_amount: int = 0
 
 
 func _ready() -> void:
@@ -28,7 +25,6 @@ func set_open(value: bool) -> void:
 	if visible:
 		_refresh_rows()
 		_update_layout()
-		_context_menu.hide()
 
 
 func is_open() -> bool:
@@ -68,10 +64,10 @@ func _build_ui() -> void:
 		row.add_child(slot)
 		slot.setup("shop", _rows.size(), false)
 		slot.set_slot_data({"item_id": item_id, "amount": 1})
-		slot.right_clicked.connect(_on_slot_right_clicked)
 
 		var info_box: VBoxContainer = VBoxContainer.new()
 		info_box.add_theme_constant_override("separation", 4)
+		info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info_box)
 
 		var name_label: Label = Label.new()
@@ -84,24 +80,27 @@ func _build_ui() -> void:
 		price_label.add_theme_color_override("font_color", Color(0.45, 0.31, 0.14))
 		info_box.add_child(price_label)
 
+		var buy_button: Button = Button.new()
+		buy_button.text = "购买"
+		buy_button.custom_minimum_size = Vector2(72, 36)
+		buy_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		buy_button.pressed.connect(_on_buy_button_pressed.bind(_rows.size()))
+		row.add_child(buy_button)
+
 		_rows.append({
 			"item_id": item_id,
 			"row": row,
 			"slot": slot,
 			"name_label": name_label,
-			"price_label": price_label
+			"price_label": price_label,
+			"buy_button": buy_button
 		})
-
-	_context_menu = PopupMenu.new()
-	_context_menu.add_item("购买", 0)
-	_context_menu.id_pressed.connect(_on_context_menu_id_pressed)
-	add_child(_context_menu)
 
 
 func _update_layout() -> void:
 	if _background == null:
 		return
-	var panel_size := Vector2(360, 320)
+	var panel_size := Vector2(420, 320)
 	var viewport_size: Vector2 = get_viewport_rect().size
 	_background.size = panel_size
 	_background.position = Vector2(viewport_size.x - panel_size.x - 24.0, (viewport_size.y - panel_size.y) * 0.5)
@@ -120,6 +119,7 @@ func _refresh_rows(_value: int = 0) -> void:
 		var item_id: String = row_data["item_id"]
 		var name_label: Label = row_data["name_label"]
 		var price_label: Label = row_data["price_label"]
+		var buy_button: Button = row_data["buy_button"]
 		var unit_price: int = _get_buy_price(item_id)
 		var max_amount: int = _get_max_buy_amount(item_id)
 		name_label.text = ItemDatabase.get_display_name(item_id)
@@ -127,29 +127,18 @@ func _refresh_rows(_value: int = 0) -> void:
 			price_label.text = "单价：%d 金币 | 最多可买 %d" % [unit_price, max_amount]
 		else:
 			price_label.text = "单价：%d 金币 | 金币不足" % unit_price
+		buy_button.disabled = max_amount <= 0
 
 
-func _on_slot_right_clicked(_slot_type: String, slot_index: int) -> void:
+func _on_buy_button_pressed(row_index: int) -> void:
 	ui_clicked.emit()
-	if slot_index < 0 or slot_index >= _rows.size():
+	if row_index < 0 or row_index >= _rows.size():
 		return
-	var item_id: String = _rows[slot_index]["item_id"]
+	var item_id: String = _rows[row_index]["item_id"]
 	var max_amount: int = _get_max_buy_amount(item_id)
 	if max_amount <= 0:
 		return
-	_pending_item_id = item_id
-	_pending_max_amount = max_amount
-	_context_menu.position = get_viewport().get_mouse_position()
-	_context_menu.reset_size()
-	_context_menu.popup()
-
-
-func _on_context_menu_id_pressed(action_id: int) -> void:
-	if action_id != 0:
-		return
-	if _pending_item_id.is_empty() or _pending_max_amount <= 0:
-		return
-	buy_option_requested.emit(_pending_item_id, _pending_max_amount)
+	buy_option_requested.emit(item_id, max_amount)
 
 
 func _get_buy_price(item_id: String) -> int:

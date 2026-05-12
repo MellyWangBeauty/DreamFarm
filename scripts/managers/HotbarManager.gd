@@ -86,6 +86,25 @@ func get_selected_item_id() -> String:
 	return String(get_slot(selected_index).get("item_id", ""))
 
 
+func remove_from_slot(index: int, amount: int) -> bool:
+	if not _is_valid_index(index) or amount <= 0:
+		return false
+	var slot_data: Dictionary = _slots[index]
+	var slot_amount: int = int(slot_data.get("amount", 0))
+	if slot_amount < amount:
+		return false
+	slot_amount -= amount
+	if slot_amount <= 0:
+		_slots[index] = _make_empty_slot()
+	else:
+		slot_data["amount"] = slot_amount
+		_slots[index] = slot_data
+	hotbar_changed.emit()
+	if index == selected_index:
+		selected_slot_changed.emit(selected_index, get_selected_item_id())
+	return true
+
+
 func _receive_inventory_swap(new_slot_data: Dictionary, hotbar_index: int) -> void:
 	set_slot(hotbar_index, new_slot_data)
 

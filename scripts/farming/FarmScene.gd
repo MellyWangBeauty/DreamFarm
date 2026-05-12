@@ -161,6 +161,7 @@ func _use_selected_tool() -> void:
 	elif ItemDatabase.is_seed(selected_item_id):
 		var crop_id: String = ItemDatabase.get_crop_id_from_seed(selected_item_id)
 		if tile.plant(crop_id):
+			_hud.consume_selected_item(1)
 			_feedback_controller.play_interact()
 
 

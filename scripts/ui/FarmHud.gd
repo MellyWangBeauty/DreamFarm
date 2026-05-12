@@ -148,6 +148,10 @@ func pulse_selected_slot() -> void:
 	hotbar_ui.pulse_selected()
 
 
+func consume_selected_item(amount: int) -> bool:
+	return _hotbar_manager().remove_from_slot(_hotbar_manager().selected_index, amount)
+
+
 func _process(_delta: float) -> void:
 	if _dragging:
 		_update_drag_target_visual()
@@ -443,10 +447,22 @@ func _swap_slots(source_type: String, source_index: int, target_type: String, ta
 		return
 	var source_data: Dictionary = _get_slot_data(source_type, source_index)
 	var target_data: Dictionary = _get_slot_data(target_type, target_index)
+	if _can_merge_slots(source_data, target_data):
+		source_data["amount"] = int(source_data.get("amount", 0)) + int(target_data.get("amount", 0))
+		_set_slot_data(source_type, source_index, {"item_id": "", "amount": 0})
+		_set_slot_data(target_type, target_index, source_data)
+		_pulse_slot(target_type, target_index)
+		return
 	_set_slot_data(source_type, source_index, target_data)
 	_set_slot_data(target_type, target_index, source_data)
 	_pulse_slot(target_type, target_index)
 	_pulse_slot(source_type, source_index)
+
+
+func _can_merge_slots(source_data: Dictionary, target_data: Dictionary) -> bool:
+	var source_item_id: String = String(source_data.get("item_id", ""))
+	var target_item_id: String = String(target_data.get("item_id", ""))
+	return not source_item_id.is_empty() and source_item_id == target_item_id and ItemDatabase.is_stackable(source_item_id)
 
 
 func _get_slot_data(slot_type: String, slot_index: int) -> Dictionary:

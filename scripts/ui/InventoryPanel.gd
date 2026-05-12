@@ -14,9 +14,9 @@ const GRID_COLUMNS := 8
 const GRID_ROWS := 5
 const SLOT_COUNT := GRID_COLUMNS * GRID_ROWS
 const UI_SCALE := 0.70
-const ORIGINAL_SLOT_SIZE := Vector2(72, 72)
-const ORIGINAL_SLOT_STEP := Vector2(82, 82)
-const ORIGINAL_GRID_OFFSET := Vector2(165, 102)
+const ORIGINAL_SLOT_SIZE := Vector2(80, 80)
+const ORIGINAL_SLOT_STEP := Vector2(90, 90)
+const ORIGINAL_GRID_OFFSET := Vector2(220, 140)
 
 var _panel: TextureRect
 var _slots: Array = []

@@ -89,9 +89,9 @@ func _build_ui() -> void:
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.anchor_right = 1.0
 	_icon.anchor_bottom = 1.0
-	_icon.offset_left = 8.0
-	_icon.offset_top = 8.0
-	_icon.offset_right = -8.0
+	_icon.offset_left = 10.0
+	_icon.offset_top = 10.0
+	_icon.offset_right = -10.0
 	_icon.offset_bottom = -10.0
 	add_child(_icon)
 

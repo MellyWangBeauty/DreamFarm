@@ -1,0 +1,14 @@
+{
+	"authConfigured": true,
+	"bridgeUrl": "ws://127.0.0.1:8766",
+	"connected": false,
+	"helloAcknowledged": false,
+	"helloAttempts": 0,
+	"lastError": "",
+	"lastHeartbeatMs": 0,
+	"projectPath": "D:/XiangMu/DreamFarm/",
+	"registered": false,
+	"sessionId": "runtime-30912-3516",
+	"socketState": 0,
+	"timestamp": "2026-05-11T15:53:58"
+}

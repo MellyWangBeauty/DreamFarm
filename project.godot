@@ -26,12 +26,12 @@ RecruitmentManager="*res://scripts/characters/RecruitmentManager.gd"
 ItemDatabase="*res://scripts/data/ItemDatabase.gd"
 HotbarManager="*res://scripts/managers/HotbarManager.gd"
 
-[internationalization]
-
-locale/fallback="zh_CN"
-
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+
+[internationalization]
+
+locale/fallback="zh_CN"

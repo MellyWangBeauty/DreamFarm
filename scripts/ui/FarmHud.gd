@@ -1,4 +1,4 @@
-﻿extends CanvasLayer
+extends CanvasLayer
 
 signal tool_selected(item_id: String)
 signal inventory_toggled(opened: bool)
@@ -16,8 +16,9 @@ const TRADE_DIALOG_SCRIPT := preload("res://scripts/ui/TradeQuantityDialog.gd")
 const HUD_SCALE := 0.15
 const DAY_LABEL_POS := Vector2(300, 120)
 const GOLD_ICON_POS := Vector2(350, 250)
-const GOLD_LABEL_POS := Vector2(660, 240)
-const ICON_SIZE := Vector2(150, 150)
+const GOLD_LABEL_POS := Vector2(610, 240)
+const GOLD_LABEL_SIZE := Vector2(120, 28)
+const ICON_SIZE := Vector2(140, 140)
 
 var panel_rect: TextureRect
 var day_label: Label
@@ -30,6 +31,9 @@ var inventory_panel
 var shop_panel
 var drag_item_ui
 var trade_dialog
+var quick_buttons_bar: HBoxContainer
+var settings_panel: Panel
+var settings_controls_label: Label
 
 var _pressed_slot_type: String = ""
 var _pressed_slot_index: int = -1
@@ -39,6 +43,7 @@ var _drag_source_type: String = ""
 var _drag_source_index: int = -1
 var _last_day_progress: float = 0.0
 var _shop_open: bool = false
+var _settings_open: bool = false
 
 
 func _ready() -> void:
@@ -48,6 +53,8 @@ func _ready() -> void:
 	_build_shop_panel()
 	_build_drag_ui()
 	_build_trade_dialog()
+	_build_quick_buttons()
+	_build_settings_panel()
 	_connect_signals()
 	_refresh_all()
 
@@ -70,6 +77,11 @@ func handle_global_input(event: InputEvent) -> bool:
 		return true
 	if trade_dialog.is_open():
 		return true
+	if _settings_open:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			close_settings()
+			ui_clicked.emit()
+		return true
 	if hotbar_ui.handle_input(event):
 		ui_clicked.emit()
 		return true
@@ -83,9 +95,11 @@ func handle_global_input(event: InputEvent) -> bool:
 				close_shop()
 				ui_clicked.emit()
 				return true
-			if not inventory_panel.is_open():
-				return false
-			toggle_inventory()
+			if inventory_panel.is_open():
+				toggle_inventory()
+				ui_clicked.emit()
+				return true
+			open_settings()
 			ui_clicked.emit()
 			return true
 		if event.keycode == KEY_B:
@@ -110,7 +124,7 @@ func is_dragging() -> bool:
 
 
 func toggle_inventory() -> void:
-	if _shop_open:
+	if _shop_open or _settings_open:
 		return
 	var next_state: bool = not inventory_panel.is_open()
 	inventory_panel.set_open(next_state, "center")
@@ -127,6 +141,8 @@ func toggle_shop() -> void:
 
 
 func open_shop() -> void:
+	if _settings_open:
+		close_settings()
 	_shop_open = true
 	inventory_panel.set_open(true, "left")
 	shop_panel.set_open(true)
@@ -142,6 +158,33 @@ func close_shop() -> void:
 	if _dragging:
 		_cancel_drag()
 	inventory_toggled.emit(false)
+
+
+func toggle_settings() -> void:
+	if _settings_open:
+		close_settings()
+	else:
+		open_settings()
+
+
+func open_settings() -> void:
+	if _shop_open:
+		close_shop()
+	if inventory_panel.is_open():
+		inventory_panel.set_open(false, "center")
+		inventory_toggled.emit(false)
+	_settings_open = true
+	settings_panel.visible = true
+	if _dragging:
+		_cancel_drag()
+
+
+func close_settings() -> void:
+	_settings_open = false
+	settings_panel.visible = false
+	settings_controls_label.visible = false
+	if _dragging:
+		_cancel_drag()
 
 
 func pulse_selected_slot() -> void:
@@ -170,6 +213,8 @@ func _build_top_hud() -> void:
 
 	day_label = _make_label(DAY_LABEL_POS * HUD_SCALE, 14)
 	gold_label = _make_label(GOLD_LABEL_POS * HUD_SCALE, 16)
+	gold_label.size = GOLD_LABEL_SIZE * HUD_SCALE
+	gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	wish_stone_label = _make_label(Vector2.ZERO, 1)
 	crop_label = _make_label(Vector2.ZERO, 1)
 	day_progress_label = _make_label(Vector2.ZERO, 1)
@@ -216,6 +261,124 @@ func _build_trade_dialog() -> void:
 	trade_dialog.name = "TradeQuantityDialog"
 	trade_dialog.set_script(TRADE_DIALOG_SCRIPT)
 	add_child(trade_dialog)
+
+
+func _build_quick_buttons() -> void:
+	quick_buttons_bar = HBoxContainer.new()
+	quick_buttons_bar.name = "QuickButtons"
+	quick_buttons_bar.anchor_left = 1.0
+	quick_buttons_bar.anchor_right = 1.0
+	quick_buttons_bar.offset_left = -204.0
+	quick_buttons_bar.offset_top = 16.0
+	quick_buttons_bar.offset_right = -16.0
+	quick_buttons_bar.offset_bottom = 76.0
+	quick_buttons_bar.add_theme_constant_override("separation", 8)
+	add_child(quick_buttons_bar)
+
+	quick_buttons_bar.add_child(_make_quick_button("背包", "B", Callable(self, "_on_inventory_button_pressed")))
+	quick_buttons_bar.add_child(_make_quick_button("商店", "P", Callable(self, "_on_shop_button_pressed")))
+	quick_buttons_bar.add_child(_make_quick_button("设置", "ESC", Callable(self, "_on_settings_button_pressed")))
+
+
+func _build_settings_panel() -> void:
+	settings_panel = Panel.new()
+	settings_panel.name = "SettingsPanel"
+	settings_panel.visible = false
+	settings_panel.anchor_left = 0.5
+	settings_panel.anchor_top = 0.5
+	settings_panel.anchor_right = 0.5
+	settings_panel.anchor_bottom = 0.5
+	settings_panel.offset_left = -120.0
+	settings_panel.offset_top = -180.0
+	settings_panel.offset_right = 120.0
+	settings_panel.offset_bottom = 180.0
+	settings_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.95, 0.89, 0.78, 0.97)
+	panel_style.border_color = Color(0.58, 0.41, 0.21, 0.96)
+	panel_style.set_border_width_all(3)
+	panel_style.set_corner_radius_all(12)
+	settings_panel.add_theme_stylebox_override("panel", panel_style)
+	add_child(settings_panel)
+
+	var title_label: Label = Label.new()
+	title_label.text = "设置"
+	title_label.position = Vector2(24, 18)
+	title_label.add_theme_font_size_override("font_size", 22)
+	title_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
+	settings_panel.add_child(title_label)
+
+	var button_box: VBoxContainer = VBoxContainer.new()
+	button_box.position = Vector2(28, 62)
+	button_box.size = Vector2(184, 204)
+	button_box.add_theme_constant_override("separation", 12)
+	settings_panel.add_child(button_box)
+
+	button_box.add_child(_make_settings_button("存档", Callable(self, "_on_save_button_pressed")))
+	button_box.add_child(_make_settings_button("读档", Callable(self, "_on_load_button_pressed")))
+	button_box.add_child(_make_settings_button("操作", Callable(self, "_on_controls_button_pressed")))
+	button_box.add_child(_make_settings_button("退出", Callable(self, "_on_quit_button_pressed")))
+
+	settings_controls_label = Label.new()
+	settings_controls_label.visible = false
+	settings_controls_label.position = Vector2(28, 276)
+	settings_controls_label.size = Vector2(184, 70)
+	settings_controls_label.text = "移动：WASD / 方向键\n使用工具：鼠标左键 / 空格\n背包：B  商店：P  设置：ESC\n下一天：N  招募：K"
+	settings_controls_label.add_theme_font_size_override("font_size", 11)
+	settings_controls_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
+	settings_panel.add_child(settings_controls_label)
+
+
+func _make_quick_button(title_text: String, key_text: String, callback: Callable) -> Button:
+	var button: Button = Button.new()
+	button.custom_minimum_size = Vector2(58, 60)
+	button.focus_mode = Control.FOCUS_NONE
+	button.pressed.connect(callback)
+	var button_style := StyleBoxFlat.new()
+	button_style.bg_color = Color(0.95, 0.89, 0.78, 0.92)
+	button_style.border_color = Color(0.58, 0.41, 0.21, 0.95)
+	button_style.set_border_width_all(2)
+	button_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("normal", button_style)
+	button.add_theme_stylebox_override("hover", button_style)
+	button.add_theme_stylebox_override("pressed", button_style)
+
+	var title_label: Label = Label.new()
+	title_label.text = title_text
+	title_label.position = Vector2(0, 10)
+	title_label.size = Vector2(58, 22)
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_label.add_theme_font_size_override("font_size", 15)
+	title_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
+	button.add_child(title_label)
+
+	var key_label: Label = Label.new()
+	key_label.text = key_text
+	key_label.position = Vector2(0, 38)
+	key_label.size = Vector2(58, 18)
+	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	key_label.add_theme_font_size_override("font_size", 11)
+	key_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
+	button.add_child(key_label)
+	return button
+
+
+func _make_settings_button(button_text: String, callback: Callable) -> Button:
+	var button: Button = Button.new()
+	button.text = button_text
+	button.custom_minimum_size = Vector2(184, 42)
+	button.focus_mode = Control.FOCUS_NONE
+	button.pressed.connect(callback)
+	button.add_theme_font_size_override("font_size", 18)
+	var button_style := StyleBoxFlat.new()
+	button_style.bg_color = Color(0.86, 0.70, 0.42, 0.95)
+	button_style.border_color = Color(0.47, 0.29, 0.12, 0.96)
+	button_style.set_border_width_all(2)
+	button_style.set_corner_radius_all(8)
+	button.add_theme_stylebox_override("normal", button_style)
+	button.add_theme_stylebox_override("hover", button_style)
+	button.add_theme_stylebox_override("pressed", button_style)
+	return button
 
 
 func _connect_signals() -> void:
@@ -340,6 +503,47 @@ func _on_trade_confirmed(action_type: String, item_id: String, amount: int) -> v
 
 func _relay_ui_click() -> void:
 	ui_clicked.emit()
+
+
+func _on_inventory_button_pressed() -> void:
+	if _settings_open:
+		close_settings()
+	toggle_inventory()
+	ui_clicked.emit()
+
+
+func _on_shop_button_pressed() -> void:
+	if _settings_open:
+		close_settings()
+	toggle_shop()
+	ui_clicked.emit()
+
+
+func _on_settings_button_pressed() -> void:
+	toggle_settings()
+	ui_clicked.emit()
+
+
+func _on_save_button_pressed() -> void:
+	SaveManager.save_game()
+	settings_controls_label.visible = false
+	ui_clicked.emit()
+
+
+func _on_load_button_pressed() -> void:
+	SaveManager.load_game()
+	settings_controls_label.visible = false
+	ui_clicked.emit()
+
+
+func _on_controls_button_pressed() -> void:
+	settings_controls_label.visible = not settings_controls_label.visible
+	ui_clicked.emit()
+
+
+func _on_quit_button_pressed() -> void:
+	ui_clicked.emit()
+	get_tree().quit()
 
 
 func _on_slot_left_pressed(slot_type: String, slot_index: int) -> void:
@@ -504,4 +708,3 @@ func _hotbar_manager() -> Node:
 func _update_day_time_text(day: int, progress: float) -> void:
 	var _unused_progress: float = progress
 	day_label.text = "第%d日 %02d:%02d" % [day, TimeManager.get_display_hour(), TimeManager.get_display_minute()]
-

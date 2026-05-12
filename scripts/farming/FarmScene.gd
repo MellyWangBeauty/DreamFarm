@@ -45,10 +45,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if hired:
 			_feedback_controller.show_hire_feedback("阿丽亚", Vector2(350, 10))
 		print("招募阿丽亚结果：%s" % hired)
-	elif _is_key_pressed(event, KEY_F5):
-		SaveManager.save_game()
-	elif _is_key_pressed(event, KEY_F9):
-		SaveManager.load_game()
 
 
 func _draw() -> void:

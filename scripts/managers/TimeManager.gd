@@ -73,12 +73,14 @@ func _process(delta: float) -> void:
 	_emit_time_signals()
 
 
-func next_day() -> void:
+func next_day(growth_minutes_to_advance: int = get_minutes_per_day()) -> void:
 	_registered_tiles = get_tiles()
 	day += 1
 	current_time_minutes = START_TIME_MINUTES
 	_tick_elapsed = 0.0
 	for tile in _registered_tiles:
+		if growth_minutes_to_advance > 0 and tile.has_method("advance_time"):
+			tile.advance_time(growth_minutes_to_advance)
 		tile.reset_daily_state()
 	print("时间管理器：第 %d 天开始。" % day)
 	day_started.emit(day)
@@ -93,7 +95,7 @@ func _advance_clock_tick() -> void:
 			tile.advance_time(MINUTES_PER_TICK)
 	var next_time_minutes: int = current_time_minutes + MINUTES_PER_TICK
 	if next_time_minutes >= END_TIME_MINUTES:
-		next_day()
+		next_day(0)
 		return
 	current_time_minutes = next_time_minutes
 

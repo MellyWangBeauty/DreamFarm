@@ -31,6 +31,12 @@ func is_open() -> bool:
 	return visible
 
 
+func get_panel_global_rect() -> Rect2:
+	if _background == null:
+		return Rect2()
+	return Rect2(_background.global_position, _background.size)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_layout()

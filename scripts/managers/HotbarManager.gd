@@ -86,6 +86,33 @@ func get_selected_item_id() -> String:
 	return String(get_slot(selected_index).get("item_id", ""))
 
 
+func add_item(item_id: String, amount: int) -> int:
+	if item_id.strip_edges().is_empty() or amount <= 0:
+		return amount
+	var remaining: int = amount
+	if ItemDatabase.is_stackable(item_id):
+		for index in range(_slots.size()):
+			var slot_data: Dictionary = _slots[index]
+			if String(slot_data.get("item_id", "")) != item_id:
+				continue
+			slot_data["amount"] = int(slot_data.get("amount", 0)) + remaining
+			_slots[index] = slot_data
+			remaining = 0
+			break
+	if remaining > 0:
+		for index in range(_slots.size()):
+			var slot_data: Dictionary = _slots[index]
+			if not String(slot_data.get("item_id", "")).is_empty():
+				continue
+			_slots[index] = _make_slot_data(item_id, remaining)
+			remaining = 0
+			break
+	if remaining != amount:
+		hotbar_changed.emit()
+		selected_slot_changed.emit(selected_index, get_selected_item_id())
+	return remaining
+
+
 func remove_from_slot(index: int, amount: int) -> bool:
 	if not _is_valid_index(index) or amount <= 0:
 		return false

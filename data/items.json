@@ -1,107 +1,140 @@
 {
-  "hoe": {
-	"id": "hoe",
-	"name": "锄头",
-	"category": "tool",
-	"icon_path": "res://assets/placeholder/tools/hoe.png",
-	"ui_scale": 0.80,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "watering_can": {
-	"id": "watering_can",
-	"name": "喷壶",
-	"category": "tool",
-	"icon_path": "res://assets/placeholder/tools/watering_can.png",
-	"ui_scale": 1.05,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "scythe": {
-	"id": "scythe",
-	"name": "镰刀",
-	"category": "tool",
-	"icon_path": "res://assets/placeholder/tools/scythe.png",
-	"ui_scale": 0.80,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "wheat_seed": {
-	"id": "wheat_seed",
-	"name": "小麦种子",
-	"category": "seed",
-	"crop_id": "wheat",
-	"icon_path": "res://assets/placeholder/tools/wheat_seed.png",
-	"ui_scale": 0.94,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "potato_seed": {
-	"id": "potato_seed",
-	"name": "土豆种子",
-	"category": "seed",
-	"crop_id": "potato",
-	"icon_path": "res://assets/placeholder/tools/potato_seed.png",
-	"ui_scale": 0.75,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "carrot_seed": {
-	"id": "carrot_seed",
-	"name": "胡萝卜种子",
-	"category": "seed",
-	"crop_id": "carrot",
-	"icon_path": "res://assets/placeholder/tools/carrot_seed.png",
-	"ui_scale": 1.00,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "wheat": {
-	"id": "wheat",
-	"name": "小麦",
-	"category": "crop",
-	"crop_id": "wheat",
-	"icon_path": "res://assets/placeholder/tools/wheat.png",
-	"ui_scale": 0.98,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "potato": {
-	"id": "potato",
-	"name": "土豆",
-	"category": "crop",
-	"crop_id": "potato",
-	"icon_path": "res://assets/placeholder/tools/potato.png",
-	"ui_scale": 1.08,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "carrot": {
-	"id": "carrot",
-	"name": "胡萝卜",
-	"category": "crop",
-	"crop_id": "carrot",
-	"icon_path": "res://assets/placeholder/tools/carrot.png",
-	"ui_scale": 1.02,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "gold": {
-	"id": "gold",
-	"name": "金币",
-	"category": "currency",
-	"icon_path": "res://assets/placeholder/tools/gold_coin.png",
-	"ui_scale": 1.00,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  },
-  "wish_stone": {
-	"id": "wish_stone",
-	"name": "许愿石",
-	"category": "currency",
-	"icon_path": "res://assets/placeholder/tools/wish_stone.png",
-	"ui_scale": 1.00,
-	"ui_offset_x": 0,
-	"ui_offset_y": 0
-  }
+	"hoe": {
+		"id": "hoe",
+		"name": "锄头",
+		"category": "tool",
+		"icon_path": "res://assets/placeholder/tools/hoe.png",
+		"ui_scale": 0.8,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"watering_can": {
+		"id": "watering_can",
+		"name": "喷壶",
+		"category": "tool",
+		"icon_path": "res://assets/placeholder/tools/watering_can.png",
+		"ui_scale": 1.05,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"scythe": {
+		"id": "scythe",
+		"name": "镰刀",
+		"category": "tool",
+		"icon_path": "res://assets/placeholder/tools/scythe.png",
+		"ui_scale": 0.8,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"wheat_seed": {
+		"id": "wheat_seed",
+		"name": "小麦种子",
+		"category": "seed",
+		"crop_id": "wheat",
+		"icon_path": "res://assets/placeholder/tools/wheat_seed.png",
+		"ui_scale": 0.94,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"potato_seed": {
+		"id": "potato_seed",
+		"name": "土豆种子",
+		"category": "seed",
+		"crop_id": "potato",
+		"icon_path": "res://assets/placeholder/tools/potato_seed.png",
+		"ui_scale": 0.75,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"carrot_seed": {
+		"id": "carrot_seed",
+		"name": "胡萝卜种子",
+		"category": "seed",
+		"crop_id": "carrot",
+		"icon_path": "res://assets/placeholder/tools/carrot_seed.png",
+		"ui_scale": 1.0,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"wheat": {
+		"id": "wheat",
+		"name": "小麦",
+		"category": "crop",
+		"crop_id": "wheat",
+		"icon_path": "res://assets/placeholder/tools/wheat.png",
+		"ui_scale": 0.98,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"potato": {
+		"id": "potato",
+		"name": "土豆",
+		"category": "crop",
+		"crop_id": "potato",
+		"icon_path": "res://assets/placeholder/tools/potato.png",
+		"ui_scale": 1.08,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"carrot": {
+		"id": "carrot",
+		"name": "胡萝卜",
+		"category": "crop",
+		"crop_id": "carrot",
+		"icon_path": "res://assets/placeholder/tools/carrot.png",
+		"ui_scale": 1.02,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"wood_chest": {
+		"id": "wood_chest",
+		"name": "木箱子",
+		"category": "container",
+		"storage_columns": 4,
+		"storage_rows": 4,
+		"icon_path": "res://assets/placeholder/containers/wood_chest.png",
+		"ui_scale": 1.1,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"iron_chest": {
+		"id": "iron_chest",
+		"name": "铁箱子",
+		"category": "container",
+		"storage_columns": 5,
+		"storage_rows": 5,
+		"icon_path": "res://assets/placeholder/containers/iron_chest.png",
+		"ui_scale": 1.1,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"gold_chest": {
+		"id": "gold_chest",
+		"name": "金箱子",
+		"category": "container",
+		"storage_columns": 6,
+		"storage_rows": 6,
+		"icon_path": "res://assets/placeholder/containers/gold_chest.png",
+		"ui_scale": 1.1,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"gold": {
+		"id": "gold",
+		"name": "金币",
+		"category": "currency",
+		"icon_path": "res://assets/placeholder/tools/gold_coin.png",
+		"ui_scale": 1.0,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"wish_stone": {
+		"id": "wish_stone",
+		"name": "许愿石",
+		"category": "currency",
+		"icon_path": "res://assets/placeholder/tools/wish_stone.png",
+		"ui_scale": 1.0,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	}
 }

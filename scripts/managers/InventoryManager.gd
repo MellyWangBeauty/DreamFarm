@@ -36,6 +36,21 @@ func add_item(item_id: String, amount: int) -> void:
 	_emit_changed()
 
 
+func add_item_prefer_hotbar(item_id: String, amount: int) -> void:
+	if item_id.strip_edges().is_empty():
+		push_warning("背包管理器：物品 ID 不能为空。")
+		return
+	if amount <= 0:
+		push_warning("背包管理器：添加数量必须大于 0。")
+		return
+	var remaining: int = amount
+	var hotbar_manager: Node = get_node_or_null("/root/HotbarManager")
+	if hotbar_manager != null and hotbar_manager.has_method("add_item"):
+		remaining = int(hotbar_manager.add_item(item_id, amount))
+	if remaining > 0:
+		add_item(item_id, remaining)
+
+
 func remove_item(item_id: String, amount: int) -> bool:
 	if item_id.strip_edges().is_empty():
 		push_warning("背包管理器：物品 ID 不能为空。")

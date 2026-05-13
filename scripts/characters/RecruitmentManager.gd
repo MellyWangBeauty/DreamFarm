@@ -77,4 +77,3 @@ func _assign_hired_assistant(character_id: String) -> void:
 		return
 	if GameManager.farm_scene.has_method("ensure_assistant_node"):
 		GameManager.farm_scene.ensure_assistant_node(character_id)
-

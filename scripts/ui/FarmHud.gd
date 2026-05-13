@@ -11,6 +11,7 @@ const GOLD_TEXTURE := preload("res://assets/placeholder/tools/gold_coin.png")
 const HOTBAR_SCRIPT := preload("res://scripts/ui/HotbarUI.gd")
 const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
 const SHOP_PANEL_SCRIPT := preload("res://scripts/ui/ShopPanel.gd")
+const CHEST_PANEL_SCRIPT := preload("res://scripts/ui/ChestPanel.gd")
 const DRAG_ITEM_SCRIPT := preload("res://scripts/ui/DragItemUI.gd")
 const TRADE_DIALOG_SCRIPT := preload("res://scripts/ui/TradeQuantityDialog.gd")
 const HUD_SCALE := 0.15
@@ -29,11 +30,13 @@ var day_progress_label: Label
 var hotbar_ui
 var inventory_panel
 var shop_panel
+var chest_panel
 var drag_item_ui
 var trade_dialog
 var quick_buttons_bar: HBoxContainer
 var settings_panel: Panel
 var settings_controls_label: Label
+var item_tooltip: Label
 
 var _pressed_slot_type: String = ""
 var _pressed_slot_index: int = -1
@@ -44,6 +47,8 @@ var _drag_source_index: int = -1
 var _last_day_progress: float = 0.0
 var _shop_open: bool = false
 var _settings_open: bool = false
+var _chest_open: bool = false
+var _active_chest_data: Dictionary = {}
 
 
 func _ready() -> void:
@@ -51,8 +56,10 @@ func _ready() -> void:
 	_build_hotbar()
 	_build_inventory_panel()
 	_build_shop_panel()
+	_build_chest_panel()
 	_build_drag_ui()
 	_build_trade_dialog()
+	_build_item_tooltip()
 	_build_quick_buttons()
 	_build_settings_panel()
 	_connect_signals()
@@ -60,6 +67,10 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if _close_open_panel_from_blank_click(event.position):
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseMotion:
 		if not _dragging and _can_start_drag():
 			if event.position.distance_to(_pressed_mouse_position) > 6.0:
@@ -81,6 +92,10 @@ func handle_global_input(event: InputEvent) -> bool:
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			close_settings()
 			ui_clicked.emit()
+		return true
+	if _chest_open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		close_chest()
+		ui_clicked.emit()
 		return true
 	if hotbar_ui.handle_input(event):
 		ui_clicked.emit()
@@ -116,7 +131,7 @@ func get_selected_item_id() -> String:
 
 
 func is_inventory_open() -> bool:
-	return inventory_panel.is_open()
+	return inventory_panel.is_open() or _chest_open
 
 
 func is_dragging() -> bool:
@@ -124,6 +139,9 @@ func is_dragging() -> bool:
 
 
 func toggle_inventory() -> void:
+	if _chest_open:
+		close_chest()
+		return
 	if _shop_open or _settings_open:
 		return
 	var next_state: bool = not inventory_panel.is_open()
@@ -141,6 +159,8 @@ func toggle_shop() -> void:
 
 
 func open_shop() -> void:
+	if _chest_open:
+		close_chest()
 	if _settings_open:
 		close_settings()
 	_shop_open = true
@@ -168,6 +188,8 @@ func toggle_settings() -> void:
 
 
 func open_settings() -> void:
+	if _chest_open:
+		close_chest()
 	if _shop_open:
 		close_shop()
 	if inventory_panel.is_open():
@@ -187,6 +209,75 @@ func close_settings() -> void:
 		_cancel_drag()
 
 
+func open_chest(chest_data: Dictionary) -> void:
+	if _shop_open:
+		close_shop()
+	if _settings_open:
+		close_settings()
+	_active_chest_data = chest_data
+	var item_id: String = String(chest_data.get("item_id", ""))
+	var columns: int = ItemDatabase.get_container_columns(item_id)
+	var rows: int = ItemDatabase.get_container_rows(item_id)
+	_chest_open = true
+	inventory_panel.set_open(true, "left")
+	chest_panel.open_chest(ItemDatabase.get_display_name(item_id), columns, rows, chest_data.get("slots", []))
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(true)
+
+
+func close_chest() -> void:
+	if not _chest_open:
+		return
+	_active_chest_data["slots"] = chest_panel.get_slots()
+	_chest_open = false
+	chest_panel.close_chest()
+	inventory_panel.set_open(false, "center")
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(false)
+
+
+func flush_open_chest() -> void:
+	if _chest_open:
+		_active_chest_data["slots"] = chest_panel.get_slots()
+
+
+func _close_open_panel_from_blank_click(mouse_position: Vector2) -> bool:
+	if trade_dialog.is_open() or _dragging:
+		return false
+	if not inventory_panel.is_open() and not _shop_open and not _settings_open and not _chest_open:
+		return false
+	if _is_point_inside_open_ui(mouse_position):
+		return false
+	if _shop_open:
+		close_shop()
+	elif _settings_open:
+		close_settings()
+	elif _chest_open:
+		close_chest()
+	else:
+		toggle_inventory()
+	ui_clicked.emit()
+	return true
+
+
+func _is_point_inside_open_ui(mouse_position: Vector2) -> bool:
+	if quick_buttons_bar != null and quick_buttons_bar.get_global_rect().has_point(mouse_position):
+		return true
+	if hotbar_ui != null and int(hotbar_ui.get_slot_index_at_global_position(mouse_position)) != -1:
+		return true
+	if inventory_panel.is_open() and inventory_panel.get_panel_global_rect().has_point(mouse_position):
+		return true
+	if _shop_open and shop_panel.get_panel_global_rect().has_point(mouse_position):
+		return true
+	if _chest_open and chest_panel.get_panel_global_rect().has_point(mouse_position):
+		return true
+	if _settings_open and settings_panel.get_global_rect().has_point(mouse_position):
+		return true
+	return false
+
+
 func pulse_selected_slot() -> void:
 	hotbar_ui.pulse_selected()
 
@@ -198,6 +289,8 @@ func consume_selected_item(amount: int) -> bool:
 func _process(_delta: float) -> void:
 	if _dragging:
 		_update_drag_target_visual()
+	if item_tooltip != null and item_tooltip.visible:
+		item_tooltip.position = get_viewport().get_mouse_position() + Vector2(18, 18)
 
 
 func _build_top_hud() -> void:
@@ -249,6 +342,13 @@ func _build_shop_panel() -> void:
 	add_child(shop_panel)
 
 
+func _build_chest_panel() -> void:
+	chest_panel = Control.new()
+	chest_panel.name = "ChestPanel"
+	chest_panel.set_script(CHEST_PANEL_SCRIPT)
+	add_child(chest_panel)
+
+
 func _build_drag_ui() -> void:
 	drag_item_ui = Control.new()
 	drag_item_ui.name = "DragItemUI"
@@ -261,6 +361,20 @@ func _build_trade_dialog() -> void:
 	trade_dialog.name = "TradeQuantityDialog"
 	trade_dialog.set_script(TRADE_DIALOG_SCRIPT)
 	add_child(trade_dialog)
+
+
+func _build_item_tooltip() -> void:
+	item_tooltip = Label.new()
+	item_tooltip.name = "ItemTooltip"
+	item_tooltip.visible = false
+	item_tooltip.z_index = 200
+	item_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_tooltip.add_theme_font_size_override("font_size", 16)
+	item_tooltip.add_theme_color_override("font_color", Color(0.20, 0.15, 0.09))
+	item_tooltip.add_theme_color_override("font_shadow_color", Color(1, 1, 1, 0.35))
+	item_tooltip.add_theme_constant_override("shadow_offset_x", 1)
+	item_tooltip.add_theme_constant_override("shadow_offset_y", 1)
+	add_child(item_tooltip)
 
 
 func _build_quick_buttons() -> void:
@@ -323,7 +437,7 @@ func _build_settings_panel() -> void:
 	settings_controls_label.visible = false
 	settings_controls_label.position = Vector2(28, 276)
 	settings_controls_label.size = Vector2(184, 70)
-	settings_controls_label.text = "移动：WASD / 方向键\n使用工具：鼠标左键 / 空格\n背包：B  商店：P  设置：ESC\n下一天：N  招募：K"
+	settings_controls_label.text = "移动：WASD / 方向键\n使用工具：鼠标左键 / 空格\n丢弃：G  背包：B  商店：P\n设置：ESC  下一天：N  招募：K"
 	settings_controls_label.add_theme_font_size_override("font_size", 11)
 	settings_controls_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
 	settings_panel.add_child(settings_controls_label)
@@ -402,6 +516,10 @@ func _connect_signals() -> void:
 	inventory_panel.slot_left_released.connect(_on_slot_left_released)
 	inventory_panel.slot_hovered.connect(_on_slot_hovered)
 	inventory_panel.slot_unhovered.connect(_on_slot_unhovered)
+	chest_panel.slot_left_pressed.connect(_on_slot_left_pressed)
+	chest_panel.slot_left_released.connect(_on_slot_left_released)
+	chest_panel.slot_hovered.connect(_on_slot_hovered)
+	chest_panel.slot_unhovered.connect(_on_slot_unhovered)
 	shop_panel.buy_option_requested.connect(_on_buy_option_requested)
 	shop_panel.ui_clicked.connect(_relay_ui_click)
 	trade_dialog.trade_confirmed.connect(_on_trade_confirmed)
@@ -549,6 +667,12 @@ func _on_quit_button_pressed() -> void:
 func _on_slot_left_pressed(slot_type: String, slot_index: int) -> void:
 	if not inventory_panel.is_open():
 		return
+	if _is_shift_pressed():
+		if _quick_move_slot(slot_type, slot_index):
+			_clear_all_slot_hover()
+			ui_clicked.emit()
+		_clear_press_state()
+		return
 	_pressed_slot_type = slot_type
 	_pressed_slot_index = slot_index
 	_pressed_mouse_position = get_viewport().get_mouse_position()
@@ -560,11 +684,13 @@ func _on_slot_left_released(_slot_type: String, _slot_index: int) -> void:
 
 
 func _on_slot_hovered(_slot_type: String, _slot_index: int) -> void:
+	_show_slot_tooltip(_slot_type, _slot_index)
 	if _dragging:
 		_update_drag_target_visual()
 
 
 func _on_slot_unhovered(_slot_type: String, _slot_index: int) -> void:
+	_hide_slot_tooltip(_slot_type, _slot_index)
 	if _dragging:
 		_update_drag_target_visual()
 
@@ -600,11 +726,17 @@ func _finish_drag() -> void:
 		if inventory_index != -1:
 			target_type = "inventory"
 			target_index = inventory_index
+		elif _chest_open:
+			var chest_index: int = int(chest_panel.get_slot_index_at_global_position(mouse_position))
+			if chest_index != -1:
+				target_type = "chest"
+				target_index = chest_index
 	if not target_type.is_empty():
 		_swap_slots(_drag_source_type, _drag_source_index, target_type, target_index)
 		ui_clicked.emit()
-	hotbar_ui.clear_all_hover()
-	inventory_panel.clear_all_hover()
+	elif _drop_dragged_slot_to_world():
+		ui_clicked.emit()
+	_clear_all_slot_hover()
 	drag_item_ui.hide_drag()
 	_dragging = false
 	_drag_source_type = ""
@@ -612,8 +744,7 @@ func _finish_drag() -> void:
 
 
 func _cancel_drag() -> void:
-	hotbar_ui.clear_all_hover()
-	inventory_panel.clear_all_hover()
+	_clear_all_slot_hover()
 	drag_item_ui.hide_drag()
 	_dragging = false
 	_drag_source_type = ""
@@ -628,8 +759,7 @@ func _clear_press_state() -> void:
 
 
 func _update_drag_target_visual() -> void:
-	hotbar_ui.clear_all_hover()
-	inventory_panel.clear_all_hover()
+	_clear_all_slot_hover()
 	if not _dragging:
 		return
 	var mouse_position: Vector2 = get_viewport().get_mouse_position()
@@ -643,6 +773,12 @@ func _update_drag_target_visual() -> void:
 		inventory_panel.set_hover_state(inventory_index, true)
 		drag_item_ui.set_drop_state(true)
 		return
+	if _chest_open:
+		var chest_index: int = int(chest_panel.get_slot_index_at_global_position(mouse_position))
+		if chest_index != -1:
+			chest_panel.set_hover_state(chest_index, true)
+			drag_item_ui.set_drop_state(true)
+			return
 	drag_item_ui.set_drop_state(false)
 
 
@@ -663,6 +799,100 @@ func _swap_slots(source_type: String, source_index: int, target_type: String, ta
 	_pulse_slot(source_type, source_index)
 
 
+func _drop_dragged_slot_to_world() -> bool:
+	if _drag_source_type.is_empty() or _drag_source_index < 0:
+		return false
+	var source_data: Dictionary = _get_slot_data(_drag_source_type, _drag_source_index)
+	var item_id: String = String(source_data.get("item_id", ""))
+	var amount: int = int(source_data.get("amount", 0))
+	if item_id.is_empty() or amount <= 0:
+		return false
+	var farm_scene = GameManager.farm_scene
+	if farm_scene == null or not farm_scene.has_method("drop_item_at_player"):
+		return false
+	_set_slot_data(_drag_source_type, _drag_source_index, {"item_id": "", "amount": 0})
+	farm_scene.drop_item_at_player(item_id, amount)
+	if item_tooltip != null:
+		item_tooltip.visible = false
+	return true
+
+
+func _quick_move_slot(source_type: String, source_index: int) -> bool:
+	var source_data: Dictionary = _get_slot_data(source_type, source_index)
+	if String(source_data.get("item_id", "")).is_empty() or int(source_data.get("amount", 0)) <= 0:
+		return false
+	var target_types: Array[String] = _get_quick_move_targets(source_type)
+	for target_type in target_types:
+		if _move_slot_data_to_target_type(source_type, source_index, source_data, target_type):
+			return true
+	return false
+
+
+func _get_quick_move_targets(source_type: String) -> Array[String]:
+	if _chest_open:
+		match source_type:
+			"hotbar", "inventory":
+				return ["chest"]
+			"chest":
+				return ["inventory", "hotbar"]
+	elif inventory_panel.is_open():
+		match source_type:
+			"hotbar":
+				return ["inventory"]
+			"inventory":
+				return ["hotbar"]
+	return []
+
+
+func _move_slot_data_to_target_type(source_type: String, source_index: int, source_data: Dictionary, target_type: String) -> bool:
+	var merge_index: int = _find_merge_target_index(target_type, source_data)
+	if merge_index != -1:
+		var target_data: Dictionary = _get_slot_data(target_type, merge_index)
+		target_data["amount"] = int(target_data.get("amount", 0)) + int(source_data.get("amount", 0))
+		_set_slot_data(source_type, source_index, {"item_id": "", "amount": 0})
+		_set_slot_data(target_type, merge_index, target_data)
+		_pulse_slot(target_type, merge_index)
+		return true
+	var empty_index: int = _find_empty_target_index(target_type)
+	if empty_index != -1:
+		_set_slot_data(source_type, source_index, {"item_id": "", "amount": 0})
+		_set_slot_data(target_type, empty_index, source_data)
+		_pulse_slot(target_type, empty_index)
+		return true
+	return false
+
+
+func _find_merge_target_index(target_type: String, source_data: Dictionary) -> int:
+	var source_item_id: String = String(source_data.get("item_id", ""))
+	if source_item_id.is_empty() or not ItemDatabase.is_stackable(source_item_id):
+		return -1
+	for index in range(_get_slot_count(target_type)):
+		var target_data: Dictionary = _get_slot_data(target_type, index)
+		if String(target_data.get("item_id", "")) == source_item_id:
+			return index
+	return -1
+
+
+func _find_empty_target_index(target_type: String) -> int:
+	for index in range(_get_slot_count(target_type)):
+		var target_data: Dictionary = _get_slot_data(target_type, index)
+		if String(target_data.get("item_id", "")).is_empty() or int(target_data.get("amount", 0)) <= 0:
+			return index
+	return -1
+
+
+func _get_slot_count(slot_type: String) -> int:
+	match slot_type:
+		"hotbar":
+			return int(_hotbar_manager().get_slot_count())
+		"inventory":
+			return int(InventoryManager.get_slot_count())
+		"chest":
+			if _chest_open:
+				return chest_panel.get_slots().size()
+	return 0
+
+
 func _can_merge_slots(source_data: Dictionary, target_data: Dictionary) -> bool:
 	var source_item_id: String = String(source_data.get("item_id", ""))
 	var target_item_id: String = String(target_data.get("item_id", ""))
@@ -675,6 +905,8 @@ func _get_slot_data(slot_type: String, slot_index: int) -> Dictionary:
 			return _hotbar_manager().get_slot(slot_index)
 		"inventory":
 			return InventoryManager.get_slot(slot_index)
+		"chest":
+			return chest_panel.get_slot(slot_index)
 	return {
 		"item_id": "",
 		"amount": 0
@@ -687,22 +919,55 @@ func _set_slot_data(slot_type: String, slot_index: int, slot_data: Dictionary) -
 			_hotbar_manager().set_slot(slot_index, slot_data)
 		"inventory":
 			InventoryManager.set_slot(slot_index, slot_data)
+		"chest":
+			chest_panel.set_slot(slot_index, slot_data)
+			_active_chest_data["slots"] = chest_panel.get_slots()
 
 
 func _pulse_slot(slot_type: String, slot_index: int) -> void:
 	match slot_type:
 		"hotbar":
-			hotbar_ui.set_hover_state(slot_index, true)
 			if slot_index == int(_hotbar_manager().selected_index):
 				hotbar_ui.pulse_selected()
 			else:
 				hotbar_ui.pulse_slot(slot_index)
 		"inventory":
 			inventory_panel.pulse_slot(slot_index)
+		"chest":
+			chest_panel.pulse_slot(slot_index)
+
+
+func _clear_all_slot_hover() -> void:
+	hotbar_ui.clear_all_hover()
+	inventory_panel.clear_all_hover()
+	chest_panel.clear_all_hover()
 
 
 func _hotbar_manager() -> Node:
 	return get_node("/root/HotbarManager")
+
+
+func _is_shift_pressed() -> bool:
+	return Input.is_key_pressed(KEY_SHIFT)
+
+
+func _show_slot_tooltip(slot_type: String, slot_index: int) -> void:
+	if slot_type == "inventory":
+		return
+	var slot_data: Dictionary = _get_slot_data(slot_type, slot_index)
+	var item_id: String = String(slot_data.get("item_id", ""))
+	var amount: int = int(slot_data.get("amount", 0))
+	if item_id.is_empty() or amount <= 0:
+		item_tooltip.visible = false
+		return
+	item_tooltip.text = "%s x%d" % [ItemDatabase.get_display_name(item_id), amount]
+	item_tooltip.position = get_viewport().get_mouse_position() + Vector2(18, 18)
+	item_tooltip.visible = true
+
+
+func _hide_slot_tooltip(slot_type: String, _slot_index: int) -> void:
+	if slot_type != "inventory" and item_tooltip != null:
+		item_tooltip.visible = false
 
 
 func _update_day_time_text(day: int, progress: float) -> void:

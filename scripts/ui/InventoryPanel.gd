@@ -81,6 +81,12 @@ func get_slot_index_at_global_position(global_position: Vector2) -> int:
 	return -1
 
 
+func get_panel_global_rect() -> Rect2:
+	if _panel == null:
+		return Rect2()
+	return Rect2(_panel.global_position, _panel.size)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_update_layout()

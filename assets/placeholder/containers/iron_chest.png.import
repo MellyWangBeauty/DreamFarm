@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cqhixgo1ucjcf"
-valid=false
+uid="uid://c5yhket5c2ll"
+path="res://.godot/imported/iron_chest.png-2af4014dd6e7fa822f56a2dc365f8177.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://assets/placeholder/ui/icon_shop.png"
+source_file="res://assets/placeholder/containers/iron_chest.png"
+dest_files=["res://.godot/imported/iron_chest.png-2af4014dd6e7fa822f56a2dc365f8177.ctex"]
 
 [params]
 

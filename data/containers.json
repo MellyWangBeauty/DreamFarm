@@ -1,0 +1,44 @@
+{
+  "wood_chest": {
+	"id": "wood_chest",
+	"name": "木箱子",
+	"grid_size": {
+	  "width": 1,
+	  "height": 1
+	},
+	"storage_grid": {
+	  "columns": 4,
+	  "rows": 4
+	},
+	"capacity": 16,
+	"icon_path": "res://assets/placeholder/containers/wood_chest.png"
+  },
+  "iron_chest": {
+	"id": "iron_chest",
+	"name": "铁箱子",
+	"grid_size": {
+	  "width": 1,
+	  "height": 1
+	},
+	"storage_grid": {
+	  "columns": 5,
+	  "rows": 5
+	},
+	"capacity": 25,
+	"icon_path": "res://assets/placeholder/containers/iron_chest.png"
+  },
+  "gold_chest": {
+	"id": "gold_chest",
+	"name": "金箱子",
+	"grid_size": {
+	  "width": 1,
+	  "height": 1
+	},
+	"storage_grid": {
+	  "columns": 6,
+	  "rows": 6
+	},
+	"capacity": 36,
+	"icon_path": "res://assets/placeholder/containers/gold_chest.png"
+  }
+}

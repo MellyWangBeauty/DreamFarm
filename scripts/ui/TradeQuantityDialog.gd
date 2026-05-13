@@ -7,6 +7,7 @@ var _panel: Panel
 var _title_label: Label
 var _summary_label: Label
 var _spin_box: SpinBox
+var _spin_line_edit: LineEdit
 var _total_label: Label
 var _confirm_button: Button
 var _cancel_button: Button
@@ -50,6 +51,7 @@ func open_dialog(action_type: String, item_id: String, max_amount: int, unit_pri
 	_spin_box.max_value = _max_amount
 	_spin_box.step = 1
 	_spin_box.value = 1
+	_spin_line_edit.text = "1"
 	_confirm_button.text = "确认卖出" if action_type == "sell" else "确认购买"
 	_update_total_label(1.0)
 	visible = true
@@ -94,6 +96,11 @@ func _build_ui() -> void:
 	_spin_box.position = Vector2(20, 138)
 	_spin_box.size = Vector2(120, 30)
 	_spin_box.value_changed.connect(_update_total_label)
+	_style_spin_box()
+	_spin_line_edit = _spin_box.get_line_edit()
+	_spin_line_edit.text_changed.connect(_on_spin_text_changed)
+	_spin_line_edit.text_submitted.connect(_on_spin_text_submitted)
+	_spin_line_edit.focus_exited.connect(_clamp_spin_box_to_valid_range)
 	_panel.add_child(_spin_box)
 
 	_total_label = Label.new()
@@ -123,11 +130,56 @@ func _notification(what: int) -> void:
 
 
 func _update_total_label(value: float) -> void:
-	var amount := int(round(value))
+	var amount := clampi(int(round(value)), 1, _max_amount)
 	_total_label.text = "总价：%d 金币" % (_unit_price * amount)
 
 
+func _on_spin_text_changed(new_text: String) -> void:
+	if new_text.strip_edges().is_empty():
+		_update_total_label(1.0)
+		return
+	_update_total_label(float(_parse_amount_text(new_text)))
+
+
+func _on_spin_text_submitted(_new_text: String) -> void:
+	_clamp_spin_box_to_valid_range()
+
+
+func _clamp_spin_box_to_valid_range() -> void:
+	var amount: int = clampi(_parse_amount_text(_spin_line_edit.text), 1, _max_amount)
+	_spin_box.value = amount
+	_spin_line_edit.text = str(amount)
+	_update_total_label(float(amount))
+
+
+func _parse_amount_text(text: String) -> int:
+	var stripped_text := text.strip_edges()
+	if not stripped_text.is_valid_int():
+		return 1
+	return int(stripped_text)
+
+
+func _style_spin_box() -> void:
+	var arrow_color := Color(0.27, 0.17, 0.09)
+	_spin_box.add_theme_icon_override("updown", _make_spin_arrows_texture(arrow_color))
+	_spin_box.add_theme_color_override("font_color", Color(0.95, 0.93, 0.88))
+	_spin_box.add_theme_color_override("font_uneditable_color", Color(0.95, 0.93, 0.88))
+
+
+func _make_spin_arrows_texture(color: Color) -> ImageTexture:
+	var image := Image.create(16, 28, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for y in range(5):
+		var start_x: int = 7 - y
+		var end_x: int = 8 + y
+		for x in range(start_x, end_x + 1):
+			image.set_pixel(x, 5 + y, color)
+			image.set_pixel(x, 22 - y, color)
+	return ImageTexture.create_from_image(image)
+
+
 func _on_confirm_pressed() -> void:
+	_clamp_spin_box_to_valid_range()
 	var amount := int(round(_spin_box.value))
 	trade_confirmed.emit(_action_type, _item_id, amount)
 	hide_dialog()

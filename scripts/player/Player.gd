@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 const WALK_TEXTURE := preload("res://assets/placeholder/player/player_walksheet.png")
+const INTERACTION_BODY_RADIUS := 12.0
 
 
 @export var move_speed: float = 180.0
@@ -42,8 +43,21 @@ func get_facing_tile_position(tile_size: float) -> Vector2i:
 		facing_step = Vector2(signf(facing_direction.x), 0.0)
 	else:
 		facing_step = Vector2(0.0, signf(facing_direction.y))
-	var target_position := global_position + facing_step * tile_size
-	return Vector2i(floori(target_position.x / tile_size), floori(target_position.y / tile_size))
+	var base_tile_position := _get_body_stable_tile_position(tile_size, facing_step)
+	return base_tile_position + Vector2i(int(facing_step.x), int(facing_step.y))
+
+
+func _get_body_stable_tile_position(tile_size: float, facing_step: Vector2) -> Vector2i:
+	var sample_position := global_position
+	if facing_step.x > 0.0:
+		sample_position.x -= INTERACTION_BODY_RADIUS
+	elif facing_step.x < 0.0:
+		sample_position.x += INTERACTION_BODY_RADIUS
+	if facing_step.y > 0.0:
+		sample_position.y -= INTERACTION_BODY_RADIUS
+	elif facing_step.y < 0.0:
+		sample_position.y += INTERACTION_BODY_RADIUS
+	return Vector2i(floori(sample_position.x / tile_size), floori(sample_position.y / tile_size))
 
 
 func _get_input_vector() -> Vector2:

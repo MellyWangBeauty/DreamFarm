@@ -7,6 +7,7 @@ var display_name: String = ""
 var _bob_time: float = 0.0
 var _spawn_position: Vector2 = Vector2.ZERO
 var _velocity: Vector2 = Vector2.ZERO
+var _wait_for_player_exit_pickup_range: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var quantity_label: Label = $QuantityLabel
@@ -31,6 +32,10 @@ func launch(initial_velocity: Vector2) -> void:
 	_velocity = initial_velocity
 
 
+func wait_for_player_exit_pickup_range() -> void:
+	_wait_for_player_exit_pickup_range = true
+
+
 func set_spawn_world_position(world_position: Vector2) -> void:
 	global_position = world_position
 	_spawn_position = global_position
@@ -49,6 +54,11 @@ func _process(delta: float) -> void:
 		return
 	var to_player: Vector2 = player.global_position - global_position
 	var distance: float = to_player.length()
+	if _wait_for_player_exit_pickup_range:
+		if distance >= 56.0:
+			_wait_for_player_exit_pickup_range = false
+		else:
+			return
 	if distance < 56.0 and distance > 1.0:
 		_spawn_position += to_player.normalized() * 140.0 * delta
 	if distance < 20.0:
@@ -56,7 +66,7 @@ func _process(delta: float) -> void:
 
 
 func _collect() -> void:
-	InventoryManager.add_item(item_id, amount)
+	InventoryManager.add_item_prefer_hotbar(item_id, amount)
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("on_item_drop_collected"):
 		GameManager.farm_scene.on_item_drop_collected(item_id, amount, global_position)
 	queue_free()

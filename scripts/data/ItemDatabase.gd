@@ -8,10 +8,10 @@ const DEFAULT_HOTBAR: Array[String] = [
 	"potato_seed",
 	"carrot_seed",
 	"scythe",
+	"wood_chest",
+	"iron_chest",
+	"gold_chest",
 	"",
-	"",
-	"",
-	""
 ]
 
 var _items: Dictionary = {}
@@ -94,11 +94,15 @@ func is_tool(item_id: String) -> bool:
 
 
 func is_stackable(item_id: String) -> bool:
-	return item_exists(item_id) and not is_tool(item_id)
+	return item_exists(item_id) and not is_tool(item_id) and not is_container(item_id)
 
 
 func is_crop(item_id: String) -> bool:
 	return String(get_item(item_id).get("category", "")) == "crop"
+
+
+func is_container(item_id: String) -> bool:
+	return String(get_item(item_id).get("category", "")) == "container"
 
 
 func is_sellable(item_id: String) -> bool:
@@ -116,3 +120,17 @@ func get_sell_price(item_id: String) -> int:
 	if CropData.crop_exists(crop_id):
 		return int(CropData.get_crop(crop_id).get("sell_price", 0))
 	return 0
+
+
+func get_container_columns(item_id: String) -> int:
+	return maxi(int(get_item(item_id).get("storage_columns", 0)), 1)
+
+
+func get_container_rows(item_id: String) -> int:
+	return maxi(int(get_item(item_id).get("storage_rows", 0)), 1)
+
+
+func get_container_capacity(item_id: String) -> int:
+	if not is_container(item_id):
+		return 0
+	return get_container_columns(item_id) * get_container_rows(item_id)

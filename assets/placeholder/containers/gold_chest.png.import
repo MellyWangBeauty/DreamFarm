@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://54xkrrsb8lkf"
-valid=false
+uid="uid://d2bhrm7spr2ui"
+path="res://.godot/imported/gold_chest.png-d46839909e695f881946ab50aeb05220.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
-source_file="res://assets/placeholder/ui/icon_inventory.png"
+source_file="res://assets/placeholder/containers/gold_chest.png"
+dest_files=["res://.godot/imported/gold_chest.png-d46839909e695f881946ab50aeb05220.ctex"]
 
 [params]
 

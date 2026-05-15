@@ -17,7 +17,7 @@ var _chests_root: Node2D
 var _feedback_controller: Node2D
 var _hud
 var _shop_sell_items: Array[String] = ["wheat", "potato", "carrot"]
-var _shop_buy_items: Array[String] = ["wheat_seed", "potato_seed", "carrot_seed"]
+var _shop_buy_items: Array[String] = ["wheat_seed", "potato_seed", "carrot_seed", "tree_sapling"]
 
 
 func _ready() -> void:
@@ -180,6 +180,14 @@ func _use_selected_tool() -> void:
 	if selected_item_id == "hoe":
 		if tile.till():
 			_feedback_controller.play_interact()
+	elif selected_item_id == "axe":
+		if tile.can_chop_tree():
+			var chop_result: Dictionary = tile.chop_with_axe()
+			if not chop_result.is_empty():
+				_collect_chop_drops(chop_result.get("drops", []), tile.get_feedback_position())
+				_feedback_controller.play_harvest()
+			else:
+				_feedback_controller.play_interact()
 	elif selected_item_id == "watering_can":
 		if tile.water():
 			_feedback_controller.play_water()
@@ -204,6 +212,23 @@ func _use_selected_tool() -> void:
 func _get_facing_tile():
 	var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
 	return _tiles.get(tile_position, null)
+
+
+func _collect_chop_drops(drops: Array, feedback_position: Vector2) -> void:
+	var feedback_offset: float = 0.0
+	for drop_variant in drops:
+		var drop: Dictionary = drop_variant
+		var item_id: String = String(drop.get("item_id", ""))
+		var amount: int = int(drop.get("amount", 0))
+		if item_id.is_empty() or amount <= 0:
+			continue
+		InventoryManager.add_item_prefer_hotbar(item_id, amount)
+		_feedback_controller.show_pickup_feedback(
+			ItemDatabase.get_display_name(item_id),
+			amount,
+			feedback_position + Vector2(0, feedback_offset)
+		)
+		feedback_offset -= 18.0
 
 
 func _open_facing_chest() -> void:

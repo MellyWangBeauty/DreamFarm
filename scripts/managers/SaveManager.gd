@@ -60,6 +60,8 @@ func load_game() -> void:
 		hotbar_manager.set_slots(payload.get("hotbar_slots", []))
 	else:
 		hotbar_manager.reset_to_default()
+	if hotbar_manager.has_method("ensure_item_present"):
+		hotbar_manager.ensure_item_present("axe", 1)
 	RecruitmentManager.set_hired_character_ids(payload.get("hired_characters", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_farm_tile_save_data"):
 		GameManager.farm_scene.load_farm_tile_save_data(payload.get("farm_tiles", []))

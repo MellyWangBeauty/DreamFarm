@@ -26,6 +26,25 @@
 		"ui_offset_x": 0,
 		"ui_offset_y": 0
 	},
+	"axe": {
+		"id": "axe",
+		"name": "斧头",
+		"category": "tool",
+		"icon_path": "res://assets/placeholder/tools/axe.png",
+		"ui_scale": 0.8,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"tree_sapling": {
+		"id": "tree_sapling",
+		"name": "树苗",
+		"category": "seed",
+		"crop_id": "tree",
+		"icon_path": "res://assets/placeholder/crops/tree_sapling.png",
+		"ui_scale": 1.4,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
 	"wheat_seed": {
 		"id": "wheat_seed",
 		"name": "小麦种子",
@@ -83,6 +102,15 @@
 		"crop_id": "carrot",
 		"icon_path": "res://assets/placeholder/tools/carrot.png",
 		"ui_scale": 1.02,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"wood_plank": {
+		"id": "wood_plank",
+		"name": "木板",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/tools/wood_plank.png",
+		"ui_scale": 0.95,
 		"ui_offset_x": 0,
 		"ui_offset_y": 0
 	},

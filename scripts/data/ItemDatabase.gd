@@ -4,14 +4,14 @@ const ITEMS_DATA_PATH := "res://data/items.json"
 const DEFAULT_HOTBAR: Array[String] = [
 	"hoe",
 	"watering_can",
+	"axe",
+	"tree_sapling",
 	"wheat_seed",
 	"potato_seed",
 	"carrot_seed",
 	"scythe",
 	"wood_chest",
 	"iron_chest",
-	"gold_chest",
-	"",
 ]
 
 var _items: Dictionary = {}
@@ -59,7 +59,7 @@ func get_icon(item_id: String) -> Texture2D:
 	var icon_path: String = String(item_data.get("icon_path", ""))
 	if icon_path.is_empty():
 		return null
-	var texture: Texture2D = load(icon_path)
+	var texture: Texture2D = _load_texture(icon_path)
 	if texture != null:
 		_icon_cache[item_id] = texture
 	return texture
@@ -134,3 +134,19 @@ func get_container_capacity(item_id: String) -> int:
 	if not is_container(item_id):
 		return 0
 	return get_container_columns(item_id) * get_container_rows(item_id)
+
+
+func _load_texture(resource_path: String) -> Texture2D:
+	if FileAccess.file_exists("%s.import" % resource_path):
+		var texture: Texture2D = load(resource_path)
+		if texture != null:
+			return texture
+	if not resource_path.begins_with("res://"):
+		return null
+	var file_path: String = ProjectSettings.globalize_path(resource_path)
+	if not FileAccess.file_exists(file_path):
+		return null
+	var image := Image.new()
+	if image.load(file_path) != OK:
+		return null
+	return ImageTexture.create_from_image(image)

@@ -36,6 +36,14 @@ enum TileState {
 }
 
 const TILE_SIZE := 48.0
+const TREE_STAGE_HEIGHTS: Array[float] = [36.0, 58.0, 86.0, 120.0]
+const TREE_STAGE_Y_OFFSETS: Array[float] = [-15.0, -15.0, -10.0, -10.0]
+const TREE_TRUNK_COLLISION_SIZES: Array[Vector2] = [
+	Vector2(10.0, 10.0),
+	Vector2(14.0, 18.0),
+	Vector2(16.0, 22.0),
+	Vector2(18.0, 26.0)
+]
 
 var state: String = "empty"
 var crop_id: String = ""
@@ -45,6 +53,8 @@ var watered_today: bool = false
 var grid_position: Vector2i = Vector2i.ZERO
 var _ground_sprite: Sprite2D
 var _crop_sprite: Sprite2D
+var _tree_body: StaticBody2D
+var _tree_collision_shape: CollisionShape2D
 
 
 func _ready() -> void:
@@ -71,10 +81,14 @@ func till() -> bool:
 
 
 func plant(new_crop_id: String) -> bool:
-	if state != "tilled":
-		return false
 	if not CropData.crop_exists(new_crop_id):
 		push_warning("FarmingTile.plant: crop '%s' does not exist." % new_crop_id)
+		return false
+	var planting_tree: bool = CropData.is_tree(new_crop_id)
+	if planting_tree:
+		if state != "empty" and state != "tilled":
+			return false
+	elif state != "tilled":
 		return false
 	state = "planted"
 	crop_id = new_crop_id
@@ -110,21 +124,21 @@ func advance_day() -> void:
 func advance_time(minutes_passed: int) -> void:
 	if state != "planted":
 		return
-	if not watered_today:
+	if _requires_water() and not watered_today:
 		return
 	var stage_minutes: int = _get_stage_minutes()
 	if stage_minutes <= 0:
 		return
 	var growth_stage_count: int = _get_growth_stage_count()
 	growth_minutes += max(minutes_passed, 0)
-	current_stage = mini(int(growth_minutes / stage_minutes), growth_stage_count - 1)
+	current_stage = mini(int(floor(float(growth_minutes) / float(stage_minutes))), growth_stage_count - 1)
 	if growth_minutes >= stage_minutes * (growth_stage_count - 1):
 		state = "grown"
 	_update_visuals()
 
 
 func harvest() -> Dictionary:
-	if state != "grown":
+	if state != "grown" or _is_tree():
 		return {}
 	var result: Dictionary = {
 		"item_id": crop_id,
@@ -137,7 +151,35 @@ func harvest() -> Dictionary:
 
 
 func can_harvest() -> bool:
-	return state == "grown"
+	return state == "grown" and not _is_tree()
+
+
+func can_chop_tree() -> bool:
+	return _is_tree()
+
+
+func chop_with_axe() -> Dictionary:
+	if not _is_tree():
+		return {}
+	var plank_amount: int = CropData.get_chop_drop_amount(crop_id, current_stage)
+	var seed_amount: int = CropData.get_chop_seed_drop_amount(crop_id, current_stage)
+	clear_tile()
+	var drops: Array[Dictionary] = []
+	if plank_amount > 0:
+		drops.append({
+			"item_id": "wood_plank",
+			"amount": plank_amount
+		})
+	if seed_amount > 0:
+		drops.append({
+			"item_id": "tree_sapling",
+			"amount": seed_amount
+		})
+	if drops.is_empty():
+		return {}
+	return {
+		"drops": drops
+	}
 
 
 func clear_tile() -> void:
@@ -193,21 +235,43 @@ func _setup_visuals() -> void:
 	_crop_sprite.position = Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.45)
 	add_child(_crop_sprite)
 
+	_tree_body = StaticBody2D.new()
+	_tree_body.name = "TreeCollision"
+	_tree_body.collision_layer = 1
+	_tree_body.collision_mask = 1
+	_tree_collision_shape = CollisionShape2D.new()
+	_tree_body.add_child(_tree_collision_shape)
+	_tree_body.visible = false
+	_tree_body.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child(_tree_body)
+
 
 func _update_visuals() -> void:
 	var tile_texture: Texture2D = TILE_TEXTURES.get(state, TILE_TEXTURES["empty"])
+	if _is_tree():
+		tile_texture = TILE_TEXTURES["empty"]
 	if watered_today and state in ["planted", "grown"]:
 		tile_texture = WATERED_TILE_TEXTURE if state != "grown" else TILE_TEXTURES["grown"]
+	if _is_tree():
+		tile_texture = TILE_TEXTURES["empty"]
 	_apply_sprite_texture(_ground_sprite, tile_texture, TILE_SIZE)
 	var crop_texture: Texture2D = _get_crop_texture()
 	_crop_sprite.visible = crop_texture != null
 	if crop_texture != null:
-		_apply_sprite_texture(_crop_sprite, crop_texture, 34.0)
+		if _is_tree():
+			_apply_tree_texture(crop_texture)
+		else:
+			_crop_sprite.position = Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.45)
+			_crop_sprite.z_index = 0
+			_apply_sprite_texture(_crop_sprite, crop_texture, 34.0)
+	_update_tree_collision()
 
 
 func _get_crop_texture() -> Texture2D:
 	if crop_id.is_empty():
 		return null
+	if _is_tree():
+		return _load_texture(CropData.get_stage_texture_path(crop_id, current_stage))
 	var textures: Array = CROP_STAGE_TEXTURES.get(crop_id, [])
 	if textures.is_empty():
 		return null
@@ -223,6 +287,73 @@ func _apply_sprite_texture(sprite: Sprite2D, texture: Texture2D, target_size: fl
 	var max_dimension: float = maxf(texture_size.x, texture_size.y)
 	var scale_factor: float = target_size / max_dimension
 	sprite.scale = Vector2.ONE * scale_factor
+
+
+func _apply_tree_texture(texture: Texture2D) -> void:
+	_crop_sprite.texture = texture
+	_crop_sprite.z_index = 28
+	var texture_size: Vector2i = texture.get_size()
+	var max_dimension: float = maxf(texture_size.x, texture_size.y)
+	var target_height: float = _get_tree_stage_height()
+	var scale_factor: float = target_height / max_dimension
+	_crop_sprite.scale = Vector2.ONE * scale_factor
+	_crop_sprite.position = Vector2(TILE_SIZE * 0.5, TILE_SIZE - target_height * 0.5 + 4.0 + _get_tree_stage_y_offset())
+
+
+func _update_tree_collision() -> void:
+	if _tree_body == null or _tree_collision_shape == null:
+		return
+	var tree_active: bool = _is_tree()
+	_tree_body.visible = tree_active
+	_tree_collision_shape.disabled = not tree_active
+	_tree_body.process_mode = Node.PROCESS_MODE_INHERIT if tree_active else Node.PROCESS_MODE_DISABLED
+	if not tree_active:
+		return
+	var shape := RectangleShape2D.new()
+	shape.size = _get_tree_collision_size()
+	_tree_collision_shape.shape = shape
+	_tree_body.position = Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.74)
+
+
+func _load_texture(resource_path: String) -> Texture2D:
+	if resource_path.is_empty():
+		return null
+	if FileAccess.file_exists("%s.import" % resource_path):
+		var texture: Texture2D = load(resource_path)
+		if texture != null:
+			return texture
+	if not resource_path.begins_with("res://"):
+		return null
+	var file_path: String = ProjectSettings.globalize_path(resource_path)
+	if not FileAccess.file_exists(file_path):
+		return null
+	var image := Image.new()
+	if image.load(file_path) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _is_tree() -> bool:
+	return not crop_id.is_empty() and CropData.is_tree(crop_id)
+
+
+func _requires_water() -> bool:
+	return not _is_tree()
+
+
+func _get_tree_stage_height() -> float:
+	var index: int = clampi(current_stage, 0, TREE_STAGE_HEIGHTS.size() - 1)
+	return TREE_STAGE_HEIGHTS[index]
+
+
+func _get_tree_stage_y_offset() -> float:
+	var index: int = clampi(current_stage, 0, TREE_STAGE_Y_OFFSETS.size() - 1)
+	return TREE_STAGE_Y_OFFSETS[index]
+
+
+func _get_tree_collision_size() -> Vector2:
+	var index: int = clampi(current_stage, 0, TREE_TRUNK_COLLISION_SIZES.size() - 1)
+	return TREE_TRUNK_COLLISION_SIZES[index]
 
 
 func _get_stage_minutes() -> int:

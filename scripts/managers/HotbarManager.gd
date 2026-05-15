@@ -113,6 +113,25 @@ func add_item(item_id: String, amount: int) -> int:
 	return remaining
 
 
+func has_item(item_id: String) -> bool:
+	if item_id.strip_edges().is_empty():
+		return false
+	for slot_data in _slots:
+		if String(slot_data.get("item_id", "")) == item_id and int(slot_data.get("amount", 0)) > 0:
+			return true
+	return false
+
+
+func ensure_item_present(item_id: String, amount: int = 1) -> void:
+	if item_id.strip_edges().is_empty() or amount <= 0:
+		return
+	if has_item(item_id) or InventoryManager.get_item_count(item_id) > 0:
+		return
+	var remaining: int = add_item(item_id, amount)
+	if remaining > 0:
+		InventoryManager.add_item(item_id, remaining)
+
+
 func remove_from_slot(index: int, amount: int) -> bool:
 	if not _is_valid_index(index) or amount <= 0:
 		return false

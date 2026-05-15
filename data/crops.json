@@ -34,5 +34,42 @@
 	},
 	"seed_price": 20,
 	"sell_price": 50
+  },
+  "tree": {
+	"id": "tree",
+	"name": "树",
+	"type": "tree",
+	"growth_stage_count": 4,
+	"stage_duration": {
+	  "days": 0,
+	  "hours": 0,
+	  "minutes": 10
+	},
+	"stage_names": [
+	  "sapling",
+	  "small_tree",
+	  "medium_tree",
+	  "large_tree"
+	],
+	"stage_textures": [
+	  "res://assets/placeholder/crops/tree_sapling.png",
+	  "res://assets/placeholder/crops/tree_small.png",
+	  "res://assets/placeholder/crops/tree_medium.png",
+	  "res://assets/placeholder/crops/tree_large.png"
+	],
+	"chop_drops": [
+	  0,
+	  2,
+	  5,
+	  9
+	],
+	"chop_seed_drops": [
+	  0,
+	  1,
+	  2,
+	  3
+	],
+	"seed_price": 30,
+	"sell_price": 0
   }
 }

@@ -54,3 +54,34 @@ func get_stage_duration_minutes(crop_id: String) -> int:
 		var total_minutes: int = days * TimeManager.get_minutes_per_day() + hours * 60 + minutes
 		return maxi(total_minutes, 1)
 	return maxi(int(crop_data.get("stage_minutes", 10)), 1)
+
+
+func is_tree(crop_id: String) -> bool:
+	return String(get_crop(crop_id).get("type", "")) == "tree"
+
+
+func get_stage_texture_path(crop_id: String, stage_index: int) -> String:
+	var crop_data: Dictionary = get_crop(crop_id)
+	var textures: Array = crop_data.get("stage_textures", [])
+	if textures.is_empty():
+		return ""
+	var texture_index: int = clampi(stage_index, 0, textures.size() - 1)
+	return String(textures[texture_index])
+
+
+func get_chop_drop_amount(crop_id: String, stage_index: int) -> int:
+	var crop_data: Dictionary = get_crop(crop_id)
+	var drops: Array = crop_data.get("chop_drops", [])
+	if drops.is_empty():
+		return 0
+	var drop_index: int = clampi(stage_index, 0, drops.size() - 1)
+	return maxi(int(drops[drop_index]), 0)
+
+
+func get_chop_seed_drop_amount(crop_id: String, stage_index: int) -> int:
+	var crop_data: Dictionary = get_crop(crop_id)
+	var drops: Array = crop_data.get("chop_seed_drops", [])
+	if drops.is_empty():
+		return 0
+	var drop_index: int = clampi(stage_index, 0, drops.size() - 1)
+	return maxi(int(drops[drop_index]), 0)

@@ -26,6 +26,7 @@ RecruitmentManager="*res://scripts/characters/RecruitmentManager.gd"
 ItemDatabase="*res://scripts/data/ItemDatabase.gd"
 HotbarManager="*res://scripts/managers/HotbarManager.gd"
 CraftingData="*res://scripts/data/CraftingData.gd"
+MiningData="*res://scripts/data/MiningData.gd"
 
 [display]
 

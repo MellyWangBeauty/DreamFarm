@@ -5,17 +5,18 @@ const DEFAULT_HOTBAR: Array[String] = [
 	"hoe",
 	"watering_can",
 	"axe",
+	"pickaxe",
 	"workbench",
 	"tree_sapling",
 	"wheat_seed",
 	"potato_seed",
 	"carrot_seed",
 	"scythe",
-	"wood_chest",
 ]
 const NON_STACKABLE_HANDHELD_TOOLS: Array[String] = [
 	"axe",
 	"hoe",
+	"pickaxe",
 	"scythe",
 	"watering_can",
 ]

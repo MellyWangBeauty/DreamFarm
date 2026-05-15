@@ -14,6 +14,9 @@ func save_game() -> void:
 	var workbench_data: Array = []
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_workbench_save_data"):
 		workbench_data = GameManager.farm_scene.get_workbench_save_data()
+	var ore_data: Array = []
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_ore_save_data"):
+		ore_data = GameManager.farm_scene.get_ore_save_data()
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	var payload: Dictionary = {
 		"day": TimeManager.day,
@@ -26,7 +29,8 @@ func save_game() -> void:
 		"hired_characters": RecruitmentManager.get_hired_character_ids(),
 		"farm_tiles": farm_data,
 		"farm_chests": chest_data,
-		"farm_workbenches": workbench_data
+		"farm_workbenches": workbench_data,
+		"farm_ores": ore_data
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -66,6 +70,7 @@ func load_game() -> void:
 		hotbar_manager.reset_to_default()
 	if hotbar_manager.has_method("ensure_item_present"):
 		hotbar_manager.ensure_item_present("axe", 1)
+		hotbar_manager.ensure_item_present("pickaxe", 1)
 	RecruitmentManager.set_hired_character_ids(payload.get("hired_characters", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_farm_tile_save_data"):
 		GameManager.farm_scene.load_farm_tile_save_data(payload.get("farm_tiles", []))
@@ -73,6 +78,8 @@ func load_game() -> void:
 		GameManager.farm_scene.load_chest_save_data(payload.get("farm_chests", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_workbench_save_data"):
 		GameManager.farm_scene.load_workbench_save_data(payload.get("farm_workbenches", []))
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_ore_save_data") and payload.has("farm_ores"):
+		GameManager.farm_scene.load_ore_save_data(payload.get("farm_ores", []))
 	if hotbar_manager.has_method("ensure_item_present"):
 		var has_placed_workbench: bool = GameManager.farm_scene != null and GameManager.farm_scene.has_method("has_placed_workbench") and GameManager.farm_scene.has_placed_workbench()
 		if not has_placed_workbench:

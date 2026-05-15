@@ -1,0 +1,35 @@
+{
+  "stone_ore_node": {
+	"id": "stone_ore_node",
+	"name": "石矿石",
+	"ore_item_id": "stone_ore",
+	"drop_item_id": "stone",
+	"drop_min": 3,
+	"drop_max": 5,
+	"default_positions": [
+	  {"grid_x": 5, "grid_y": 0}
+	]
+  },
+  "iron_ore_node": {
+	"id": "iron_ore_node",
+	"name": "铁矿石",
+	"ore_item_id": "iron_ore",
+	"drop_item_id": "iron_ore",
+	"drop_min": 3,
+	"drop_max": 5,
+	"default_positions": [
+	  {"grid_x": 5, "grid_y": 1}
+	]
+  },
+  "gold_ore_node": {
+	"id": "gold_ore_node",
+	"name": "金矿石",
+	"ore_item_id": "gold_ore",
+	"drop_item_id": "gold_ore",
+	"drop_min": 3,
+	"drop_max": 5,
+	"default_positions": [
+	  {"grid_x": 5, "grid_y": 2}
+	]
+  }
+}

@@ -35,6 +35,15 @@
 		"ui_offset_x": 0,
 		"ui_offset_y": 0
 	},
+	"pickaxe": {
+		"id": "pickaxe",
+		"name": "镐子",
+		"category": "tool",
+		"icon_path": "res://assets/placeholder/tools/pick.png",
+		"ui_scale": 0.8,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
 	"tree_sapling": {
 		"id": "tree_sapling",
 		"name": "树苗",
@@ -110,6 +119,60 @@
 		"name": "木板",
 		"category": "material",
 		"icon_path": "res://assets/placeholder/tools/wood_plank.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"stone_ore": {
+		"id": "stone_ore",
+		"name": "石矿石",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/stone_ore.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"stone": {
+		"id": "stone",
+		"name": "石头",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/stone.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"iron_ore": {
+		"id": "iron_ore",
+		"name": "铁矿",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/iron_ore.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"iron_ingot": {
+		"id": "iron_ingot",
+		"name": "铁锭",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/iron_ingot.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"gold_ore": {
+		"id": "gold_ore",
+		"name": "金矿",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/gold_ore.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"gold_ingot": {
+		"id": "gold_ingot",
+		"name": "金锭",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/gold_ingot.png",
 		"ui_scale": 0.95,
 		"ui_offset_x": 0,
 		"ui_offset_y": 0

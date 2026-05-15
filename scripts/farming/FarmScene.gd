@@ -13,8 +13,11 @@ const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
 
 var _tiles: Dictionary = {}
 var _placed_chests: Dictionary = {}
+var _placed_workbenches: Dictionary = {}
 var _chests_root: Node2D
+var _workbenches_root: Node2D
 var _feedback_controller: Node2D
+var _interaction_hint_label: Label
 var _hud
 var _shop_sell_items: Array[String] = ["wheat", "potato", "carrot"]
 var _shop_buy_items: Array[String] = ["wheat_seed", "potato_seed", "carrot_seed", "tree_sapling"]
@@ -24,6 +27,8 @@ func _ready() -> void:
 	GameManager.register_farm_scene(self)
 	_ensure_feedback_controller()
 	_ensure_chests_root()
+	_ensure_workbenches_root()
+	_ensure_interaction_hint()
 	_ensure_hud()
 	_create_tiles()
 	_spawn_existing_assistants()
@@ -40,7 +45,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _is_key_pressed(event, KEY_E):
 		if not _hud.is_inventory_open():
-			_open_facing_chest()
+			if not _open_facing_workbench():
+				_open_facing_chest()
 	elif _is_key_pressed(event, KEY_G):
 		if not _hud.is_inventory_open():
 			_drop_selected_hotbar_item()
@@ -65,6 +71,10 @@ func _draw() -> void:
 	for y in range(GRID_HEIGHT + 1):
 		var y_pos: float = y * TILE_SIZE
 		draw_line(Vector2(0, y_pos), Vector2(GRID_WIDTH * TILE_SIZE, y_pos), Color(0.45, 0.38, 0.20, 0.15), 1.0)
+
+
+func _process(_delta: float) -> void:
+	_update_interaction_hint()
 
 
 func get_farm_tiles() -> Array:
@@ -96,6 +106,21 @@ func get_chest_save_data() -> Array:
 	return data
 
 
+func get_workbench_save_data() -> Array:
+	var data: Array = []
+	for grid_position in _placed_workbenches.keys():
+		data.append({
+			"grid_x": grid_position.x,
+			"grid_y": grid_position.y,
+			"item_id": String(_placed_workbenches[grid_position].get("item_id", "workbench"))
+		})
+	return data
+
+
+func has_placed_workbench() -> bool:
+	return not _placed_workbenches.is_empty()
+
+
 func load_farm_tile_save_data(save_data: Array) -> void:
 	for tile_data_variant in save_data:
 		var tile_data: Dictionary = tile_data_variant
@@ -114,6 +139,14 @@ func load_chest_save_data(save_data: Array) -> void:
 		if not ItemDatabase.is_container(item_id):
 			continue
 		_place_chest_at(grid_position, item_id, chest_data.get("slots", []), false)
+
+
+func load_workbench_save_data(save_data: Array) -> void:
+	_clear_placed_workbenches()
+	for workbench_data_variant in save_data:
+		var workbench_data: Dictionary = workbench_data_variant
+		var grid_position := Vector2i(int(workbench_data.get("grid_x", 0)), int(workbench_data.get("grid_y", 0)))
+		_place_workbench_at(grid_position, String(workbench_data.get("item_id", "workbench")), false)
 
 
 func ensure_assistant_node(character_id: String) -> void:
@@ -181,7 +214,10 @@ func _use_selected_tool() -> void:
 		if tile.till():
 			_feedback_controller.play_interact()
 	elif selected_item_id == "axe":
-		if tile.can_chop_tree():
+		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
+		if _remove_workbench_at(tile_position):
+			_feedback_controller.play_harvest()
+		elif tile.can_chop_tree():
 			var chop_result: Dictionary = tile.chop_with_axe()
 			if not chop_result.is_empty():
 				_collect_chop_drops(chop_result.get("drops", []), tile.get_feedback_position())
@@ -200,6 +236,11 @@ func _use_selected_tool() -> void:
 	elif ItemDatabase.is_container(selected_item_id):
 		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
 		if _place_chest_at(tile_position, selected_item_id):
+			_hud.consume_selected_item(1)
+			_feedback_controller.play_interact()
+	elif ItemDatabase.is_placeable(selected_item_id):
+		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
+		if ItemDatabase.get_placeable_type(selected_item_id) == "workbench" and _place_workbench_at(tile_position, selected_item_id):
 			_hud.consume_selected_item(1)
 			_feedback_controller.play_interact()
 	elif ItemDatabase.is_seed(selected_item_id):
@@ -239,12 +280,23 @@ func _open_facing_chest() -> void:
 	_feedback_controller.play_ui_click()
 
 
+func _open_facing_workbench() -> bool:
+	var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
+	if not _placed_workbenches.has(tile_position):
+		return false
+	_hud.open_workbench()
+	_feedback_controller.play_ui_click()
+	return true
+
+
 func _place_chest_at(tile_position: Vector2i, item_id: String, slots: Array = [], validate_tile: bool = true) -> bool:
 	if not ItemDatabase.is_container(item_id):
 		return false
 	if _placed_chests.has(tile_position):
 		return false
 	if not _tiles.has(tile_position):
+		return false
+	if _placed_workbenches.has(tile_position):
 		return false
 	if validate_tile:
 		var tile = _tiles[tile_position]
@@ -270,6 +322,49 @@ func _spawn_chest_node(tile_position: Vector2i, item_id: String) -> void:
 	_chests_root.add_child(sprite)
 
 
+func _place_workbench_at(tile_position: Vector2i, item_id: String, validate_tile: bool = true) -> bool:
+	if item_id != "workbench":
+		return false
+	if _placed_workbenches.has(tile_position) or _placed_chests.has(tile_position):
+		return false
+	if not _tiles.has(tile_position):
+		return false
+	if validate_tile:
+		var tile = _tiles[tile_position]
+		if tile.state != "empty":
+			return false
+	_placed_workbenches[tile_position] = {"item_id": item_id}
+	_spawn_workbench_node(tile_position, item_id)
+	return true
+
+
+func _spawn_workbench_node(tile_position: Vector2i, item_id: String) -> void:
+	var sprite := Sprite2D.new()
+	sprite.name = "Workbench_%d_%d" % [tile_position.x, tile_position.y]
+	sprite.texture = ItemDatabase.get_icon(item_id)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.position = Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.47)
+	sprite.z_index = 9
+	if sprite.texture != null:
+		var texture_size: Vector2i = sprite.texture.get_size()
+		var max_dimension: float = maxf(texture_size.x, texture_size.y)
+		sprite.scale = Vector2.ONE * (42.0 / max_dimension)
+	_workbenches_root.add_child(sprite)
+
+
+func _remove_workbench_at(tile_position: Vector2i) -> bool:
+	if not _placed_workbenches.has(tile_position):
+		return false
+	_placed_workbenches.erase(tile_position)
+	var node_name := "Workbench_%d_%d" % [tile_position.x, tile_position.y]
+	var workbench_node := _workbenches_root.get_node_or_null(node_name)
+	if workbench_node != null:
+		workbench_node.queue_free()
+	spawn_item_drop("workbench", 1, Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.5), Vector2.ZERO, true)
+	return true
+
+
 func _normalize_chest_slots(item_id: String, slots: Array) -> Array:
 	var result: Array = []
 	var capacity: int = ItemDatabase.get_container_capacity(item_id)
@@ -292,6 +387,14 @@ func _clear_placed_chests() -> void:
 	if _chests_root == null:
 		return
 	for child in _chests_root.get_children():
+		child.queue_free()
+
+
+func _clear_placed_workbenches() -> void:
+	_placed_workbenches.clear()
+	if _workbenches_root == null:
+		return
+	for child in _workbenches_root.get_children():
 		child.queue_free()
 
 
@@ -356,6 +459,25 @@ func _ensure_chests_root() -> void:
 	add_child(_chests_root)
 
 
+func _ensure_workbenches_root() -> void:
+	_workbenches_root = Node2D.new()
+	_workbenches_root.name = "Workbenches"
+	add_child(_workbenches_root)
+
+
+func _ensure_interaction_hint() -> void:
+	_interaction_hint_label = Label.new()
+	_interaction_hint_label.visible = false
+	_interaction_hint_label.z_index = 120
+	_interaction_hint_label.text = "按 E 制造"
+	_interaction_hint_label.add_theme_font_size_override("font_size", 14)
+	_interaction_hint_label.add_theme_color_override("font_color", Color(0.24, 0.15, 0.08))
+	_interaction_hint_label.add_theme_color_override("font_shadow_color", Color(1.0, 0.96, 0.84, 0.85))
+	_interaction_hint_label.add_theme_constant_override("shadow_offset_x", 1)
+	_interaction_hint_label.add_theme_constant_override("shadow_offset_y", 1)
+	add_child(_interaction_hint_label)
+
+
 func _ensure_hud() -> void:
 	_hud = CanvasLayer.new()
 	_hud.name = "FarmHud"
@@ -383,6 +505,47 @@ func drop_item_at_player(item_id: String, amount: int) -> void:
 	spawn_item_drop(item_id, amount, player.global_position, Vector2.ZERO, true)
 
 
+func craft_item_from_workbench(recipe_id: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	if not CraftingData.can_craft(recipe_id, amount):
+		_feedback_controller.show_text("材料不足", Color(1.0, 0.45, 0.30), player.global_position + Vector2(0, -72))
+		return
+	var recipe: Dictionary = CraftingData.get_recipe(recipe_id)
+	var output_item_id: String = String(recipe.get("output_item_id", recipe_id))
+	var output_amount: int = maxi(int(recipe.get("output_amount", 1)), 1) * amount
+	if not CraftingData.consume_ingredients(recipe_id, amount):
+		_feedback_controller.show_text("材料不足", Color(1.0, 0.45, 0.30), player.global_position + Vector2(0, -72))
+		return
+	var dropped_amount: int = _distribute_crafted_items(output_item_id, output_amount)
+	var crafted_amount: int = output_amount - dropped_amount
+	if crafted_amount > 0:
+		_feedback_controller.show_pickup_feedback(ItemDatabase.get_display_name(output_item_id), crafted_amount, player.global_position + Vector2(0, -48))
+	if dropped_amount > 0:
+		_feedback_controller.show_text("背包已满，掉落 x%d" % dropped_amount, Color(1.0, 0.82, 0.42), player.global_position + Vector2(0, -80))
+	_feedback_controller.play_ui_click()
+
+
+func _distribute_crafted_items(item_id: String, amount: int) -> int:
+	var dropped_amount: int = 0
+	for _index in range(amount):
+		if not _try_add_single_item_to_hotbar_or_inventory(item_id):
+			spawn_item_drop(item_id, 1, player.global_position)
+			dropped_amount += 1
+	return dropped_amount
+
+
+func _try_add_single_item_to_hotbar_or_inventory(item_id: String) -> bool:
+	var hotbar_manager: Node = get_node("/root/HotbarManager")
+	if hotbar_manager.add_item(item_id, 1) <= 0:
+		return true
+	var inventory_index: int = InventoryManager.find_first_empty_slot()
+	if inventory_index == -1:
+		return false
+	InventoryManager.set_slot(inventory_index, {"item_id": item_id, "amount": 1})
+	return true
+
+
 func _drop_selected_hotbar_item() -> void:
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	var selected_index: int = int(hotbar_manager.selected_index)
@@ -395,6 +558,21 @@ func _drop_selected_hotbar_item() -> void:
 		return
 	drop_item_at_player(item_id, amount)
 	_feedback_controller.play_interact()
+
+
+func _update_interaction_hint() -> void:
+	if _interaction_hint_label == null:
+		return
+	if _hud != null and _hud.is_inventory_open():
+		_interaction_hint_label.visible = false
+		return
+	var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
+	if not _placed_workbenches.has(tile_position):
+		_interaction_hint_label.visible = false
+		return
+	_interaction_hint_label.text = "按 E 制造"
+	_interaction_hint_label.position = Vector2(tile_position.x * TILE_SIZE + 7.0, tile_position.y * TILE_SIZE - 22.0)
+	_interaction_hint_label.visible = true
 
 
 func on_item_drop_collected(item_id: String, amount: int, world_position: Vector2) -> void:

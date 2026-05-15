@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dso0rjqd17so3"
-path="res://.godot/imported/风格参考.jpg-643bed4eee34dca54a32447900163258.ctex"
+uid="uid://byf3dy6vfv2kq"
+path="res://.godot/imported/workbench.png-51d7af71e01221b1ee47de1c77483d29.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/picture-reference/风格参考.jpg"
-dest_files=["res://.godot/imported/风格参考.jpg-643bed4eee34dca54a32447900163258.ctex"]
+source_file="res://assets/placeholder/tools/workbench.png"
+dest_files=["res://.godot/imported/workbench.png-51d7af71e01221b1ee47de1c77483d29.ctex"]
 
 [params]
 

@@ -5,13 +5,19 @@ const DEFAULT_HOTBAR: Array[String] = [
 	"hoe",
 	"watering_can",
 	"axe",
+	"workbench",
 	"tree_sapling",
 	"wheat_seed",
 	"potato_seed",
 	"carrot_seed",
 	"scythe",
 	"wood_chest",
-	"iron_chest",
+]
+const NON_STACKABLE_HANDHELD_TOOLS: Array[String] = [
+	"axe",
+	"hoe",
+	"scythe",
+	"watering_can",
 ]
 
 var _items: Dictionary = {}
@@ -94,7 +100,12 @@ func is_tool(item_id: String) -> bool:
 
 
 func is_stackable(item_id: String) -> bool:
-	return item_exists(item_id) and not is_tool(item_id) and not is_container(item_id)
+	if not item_exists(item_id):
+		return false
+	var item_data: Dictionary = get_item(item_id)
+	if item_data.has("stackable"):
+		return bool(item_data.get("stackable", true))
+	return not NON_STACKABLE_HANDHELD_TOOLS.has(item_id)
 
 
 func is_crop(item_id: String) -> bool:
@@ -103,6 +114,14 @@ func is_crop(item_id: String) -> bool:
 
 func is_container(item_id: String) -> bool:
 	return String(get_item(item_id).get("category", "")) == "container"
+
+
+func is_placeable(item_id: String) -> bool:
+	return String(get_item(item_id).get("category", "")) == "placeable"
+
+
+func get_placeable_type(item_id: String) -> String:
+	return String(get_item(item_id).get("placeable_type", ""))
 
 
 func is_sellable(item_id: String) -> bool:

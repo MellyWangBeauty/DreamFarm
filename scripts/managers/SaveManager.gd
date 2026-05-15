@@ -11,6 +11,9 @@ func save_game() -> void:
 	var chest_data: Array = []
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_chest_save_data"):
 		chest_data = GameManager.farm_scene.get_chest_save_data()
+	var workbench_data: Array = []
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_workbench_save_data"):
+		workbench_data = GameManager.farm_scene.get_workbench_save_data()
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	var payload: Dictionary = {
 		"day": TimeManager.day,
@@ -22,7 +25,8 @@ func save_game() -> void:
 		"hotbar_slots": hotbar_manager.get_slots(),
 		"hired_characters": RecruitmentManager.get_hired_character_ids(),
 		"farm_tiles": farm_data,
-		"farm_chests": chest_data
+		"farm_chests": chest_data,
+		"farm_workbenches": workbench_data
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -67,4 +71,10 @@ func load_game() -> void:
 		GameManager.farm_scene.load_farm_tile_save_data(payload.get("farm_tiles", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_chest_save_data"):
 		GameManager.farm_scene.load_chest_save_data(payload.get("farm_chests", []))
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_workbench_save_data"):
+		GameManager.farm_scene.load_workbench_save_data(payload.get("farm_workbenches", []))
+	if hotbar_manager.has_method("ensure_item_present"):
+		var has_placed_workbench: bool = GameManager.farm_scene != null and GameManager.farm_scene.has_method("has_placed_workbench") and GameManager.farm_scene.has_placed_workbench()
+		if not has_placed_workbench:
+			hotbar_manager.ensure_item_present("workbench", 1)
 	print("保存管理器：游戏已从 %s 读取。" % SAVE_PATH)

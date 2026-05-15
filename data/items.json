@@ -114,6 +114,16 @@
 		"ui_offset_x": 0,
 		"ui_offset_y": 0
 	},
+	"workbench": {
+		"id": "workbench",
+		"name": "工作台",
+		"category": "placeable",
+		"placeable_type": "workbench",
+		"icon_path": "res://assets/placeholder/tools/workbench.png",
+		"ui_scale": 0.9,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
 	"wood_chest": {
 		"id": "wood_chest",
 		"name": "木箱子",

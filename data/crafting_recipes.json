@@ -1,0 +1,11 @@
+{
+  "wood_chest": {
+	"id": "wood_chest",
+	"name": "木箱子",
+	"output_item_id": "wood_chest",
+	"output_amount": 1,
+	"ingredients": {
+	  "wood_plank": 9
+	}
+  }
+}

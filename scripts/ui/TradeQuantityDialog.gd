@@ -41,18 +41,14 @@ func open_dialog(action_type: String, item_id: String, max_amount: int, unit_pri
 	_item_id = item_id
 	_unit_price = unit_price
 	_max_amount = max(max_amount, 1)
-	_title_label.text = "卖出物品" if action_type == "sell" else "购买物品"
-	_summary_label.text = "%s\n单价：%d 金币\n可选数量：1 - %d" % [
-		ItemDatabase.get_display_name(item_id),
-		unit_price,
-		_max_amount
-	]
+	_title_label.text = _get_title_text(action_type)
+	_summary_label.text = _get_summary_text(action_type, item_id, unit_price, _max_amount)
 	_spin_box.min_value = 1
 	_spin_box.max_value = _max_amount
 	_spin_box.step = 1
 	_spin_box.value = 1
 	_spin_line_edit.text = "1"
-	_confirm_button.text = "确认卖出" if action_type == "sell" else "确认购买"
+	_confirm_button.text = _get_confirm_text(action_type)
 	_update_total_label(1.0)
 	visible = true
 	_spin_box.grab_focus()
@@ -131,7 +127,10 @@ func _notification(what: int) -> void:
 
 func _update_total_label(value: float) -> void:
 	var amount := clampi(int(round(value)), 1, _max_amount)
-	_total_label.text = "总价：%d 金币" % (_unit_price * amount)
+	if _action_type == "craft":
+		_total_label.text = "数量：%d" % amount
+	else:
+		_total_label.text = "总价：%d 金币" % (_unit_price * amount)
 
 
 func _on_spin_text_changed(new_text: String) -> void:
@@ -183,3 +182,35 @@ func _on_confirm_pressed() -> void:
 	var amount := int(round(_spin_box.value))
 	trade_confirmed.emit(_action_type, _item_id, amount)
 	hide_dialog()
+
+
+func _get_title_text(action_type: String) -> String:
+	match action_type:
+		"sell":
+			return "卖出物品"
+		"buy":
+			return "购买物品"
+		"craft":
+			return "制造物品"
+	return "选择数量"
+
+
+func _get_summary_text(action_type: String, item_id: String, unit_price: int, max_amount: int) -> String:
+	if action_type == "craft":
+		return "%s\n可制造数量：1 - %d" % [ItemDatabase.get_display_name(item_id), max_amount]
+	return "%s\n单价：%d 金币\n可选数量：1 - %d" % [
+		ItemDatabase.get_display_name(item_id),
+		unit_price,
+		max_amount
+	]
+
+
+func _get_confirm_text(action_type: String) -> String:
+	match action_type:
+		"sell":
+			return "确认卖出"
+		"buy":
+			return "确认购买"
+		"craft":
+			return "确认制造"
+	return "确认"

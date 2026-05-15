@@ -38,6 +38,9 @@ enum TileState {
 const TILE_SIZE := 48.0
 const TREE_STAGE_HEIGHTS: Array[float] = [36.0, 58.0, 86.0, 120.0]
 const TREE_STAGE_Y_OFFSETS: Array[float] = [-15.0, -15.0, -10.0, -10.0]
+const TREE_BACKGROUND_Z := 10
+const TREE_FOREGROUND_Z := 28
+const TREE_SORT_Y_FACTOR := 0.72
 const TREE_TRUNK_COLLISION_SIZES: Array[Vector2] = [
 	Vector2(10.0, 10.0),
 	Vector2(14.0, 18.0),
@@ -70,6 +73,11 @@ func _exit_tree() -> void:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(TILE_SIZE, TILE_SIZE)), Color(0, 0, 0, 0), false)
+
+
+func _process(_delta: float) -> void:
+	if _is_tree():
+		_update_tree_depth()
 
 
 func till() -> bool:
@@ -291,7 +299,7 @@ func _apply_sprite_texture(sprite: Sprite2D, texture: Texture2D, target_size: fl
 
 func _apply_tree_texture(texture: Texture2D) -> void:
 	_crop_sprite.texture = texture
-	_crop_sprite.z_index = 28
+	_update_tree_depth()
 	var texture_size: Vector2i = texture.get_size()
 	var max_dimension: float = maxf(texture_size.x, texture_size.y)
 	var target_height: float = _get_tree_stage_height()
@@ -313,6 +321,22 @@ func _update_tree_collision() -> void:
 	shape.size = _get_tree_collision_size()
 	_tree_collision_shape.shape = shape
 	_tree_body.position = Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.74)
+
+
+func _update_tree_depth() -> void:
+	if _crop_sprite == null:
+		return
+	var player_node: Node2D = null
+	if GameManager.farm_scene != null:
+		player_node = GameManager.farm_scene.player
+	if player_node == null:
+		_crop_sprite.z_index = TREE_FOREGROUND_Z
+		return
+	var tree_sort_y: float = global_position.y + TILE_SIZE * TREE_SORT_Y_FACTOR
+	if player_node.global_position.y >= tree_sort_y:
+		_crop_sprite.z_index = TREE_BACKGROUND_Z
+	else:
+		_crop_sprite.z_index = TREE_FOREGROUND_Z
 
 
 func _load_texture(resource_path: String) -> Texture2D:

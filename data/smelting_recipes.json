@@ -1,0 +1,22 @@
+{
+  "iron_ingot": {
+	"id": "iron_ingot",
+	"name": "铁锭",
+	"output_item_id": "iron_ingot",
+	"output_amount": 1,
+	"ingredients": {
+	  "coal": 1,
+	  "iron_ore": 1
+	}
+  },
+  "gold_ingot": {
+	"id": "gold_ingot",
+	"name": "金锭",
+	"output_item_id": "gold_ingot",
+	"output_amount": 1,
+	"ingredients": {
+	  "coal": 1,
+	  "gold_ore": 1
+	}
+  }
+}

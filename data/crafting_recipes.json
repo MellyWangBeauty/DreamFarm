@@ -7,5 +7,34 @@
 	"ingredients": {
 	  "wood_plank": 9
 	}
+  },
+  "iron_chest": {
+	"id": "iron_chest",
+	"name": "铁箱子",
+	"output_item_id": "iron_chest",
+	"output_amount": 1,
+	"ingredients": {
+	  "wood_plank": 9,
+	  "iron_ingot": 3
+	}
+  },
+  "gold_chest": {
+	"id": "gold_chest",
+	"name": "金箱子",
+	"output_item_id": "gold_chest",
+	"output_amount": 1,
+	"ingredients": {
+	  "wood_plank": 9,
+	  "gold_ingot": 3
+	}
+  },
+  "furnace": {
+	"id": "furnace",
+	"name": "熔炉",
+	"output_item_id": "furnace",
+	"output_amount": 1,
+	"ingredients": {
+	  "stone": 9
+	}
   }
 }

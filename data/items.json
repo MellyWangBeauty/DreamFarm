@@ -141,6 +141,24 @@
 		"ui_offset_x": 0,
 		"ui_offset_y": 0
 	},
+	"coal_ore": {
+		"id": "coal_ore",
+		"name": "煤矿石",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/coal_ore.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"coal": {
+		"id": "coal",
+		"name": "煤炭",
+		"category": "material",
+		"icon_path": "res://assets/placeholder/resources/coal.png",
+		"ui_scale": 0.95,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
 	"iron_ore": {
 		"id": "iron_ore",
 		"name": "铁矿",
@@ -183,6 +201,16 @@
 		"category": "placeable",
 		"placeable_type": "workbench",
 		"icon_path": "res://assets/placeholder/tools/workbench.png",
+		"ui_scale": 0.9,
+		"ui_offset_x": 0,
+		"ui_offset_y": 0
+	},
+	"furnace": {
+		"id": "furnace",
+		"name": "熔炉",
+		"category": "placeable",
+		"placeable_type": "furnace",
+		"icon_path": "res://assets/placeholder/tools/furnace.png",
 		"ui_scale": 0.9,
 		"ui_offset_x": 0,
 		"ui_offset_y": 0

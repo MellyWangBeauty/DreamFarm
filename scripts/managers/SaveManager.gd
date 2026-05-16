@@ -14,6 +14,9 @@ func save_game() -> void:
 	var workbench_data: Array = []
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_workbench_save_data"):
 		workbench_data = GameManager.farm_scene.get_workbench_save_data()
+	var furnace_data: Array = []
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_furnace_save_data"):
+		furnace_data = GameManager.farm_scene.get_furnace_save_data()
 	var ore_data: Array = []
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_ore_save_data"):
 		ore_data = GameManager.farm_scene.get_ore_save_data()
@@ -30,7 +33,10 @@ func save_game() -> void:
 		"farm_tiles": farm_data,
 		"farm_chests": chest_data,
 		"farm_workbenches": workbench_data,
-		"farm_ores": ore_data
+		"farm_furnaces": furnace_data,
+		"farm_ores": ore_data,
+		"smelting_system_version": 1,
+		"stone_resource_expansion_version": 1
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -78,8 +84,14 @@ func load_game() -> void:
 		GameManager.farm_scene.load_chest_save_data(payload.get("farm_chests", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_workbench_save_data"):
 		GameManager.farm_scene.load_workbench_save_data(payload.get("farm_workbenches", []))
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_furnace_save_data"):
+		GameManager.farm_scene.load_furnace_save_data(payload.get("farm_furnaces", []))
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_ore_save_data") and payload.has("farm_ores"):
 		GameManager.farm_scene.load_ore_save_data(payload.get("farm_ores", []))
+		if not payload.has("smelting_system_version") and GameManager.farm_scene.has_method("ensure_default_ore_node"):
+			GameManager.farm_scene.ensure_default_ore_node("coal_ore_node")
+		if not payload.has("stone_resource_expansion_version") and GameManager.farm_scene.has_method("ensure_default_ore_positions_from_index"):
+			GameManager.farm_scene.ensure_default_ore_positions_from_index("stone_ore_node", 1)
 	if hotbar_manager.has_method("ensure_item_present"):
 		var has_placed_workbench: bool = GameManager.farm_scene != null and GameManager.farm_scene.has_method("has_placed_workbench") and GameManager.farm_scene.has_placed_workbench()
 		if not has_placed_workbench:

@@ -13,6 +13,7 @@ const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
 const SHOP_PANEL_SCRIPT := preload("res://scripts/ui/ShopPanel.gd")
 const CHEST_PANEL_SCRIPT := preload("res://scripts/ui/ChestPanel.gd")
 const WORKBENCH_PANEL_SCRIPT := preload("res://scripts/ui/WorkbenchPanel.gd")
+const FURNACE_PANEL_SCRIPT := preload("res://scripts/ui/FurnacePanel.gd")
 const DRAG_ITEM_SCRIPT := preload("res://scripts/ui/DragItemUI.gd")
 const TRADE_DIALOG_SCRIPT := preload("res://scripts/ui/TradeQuantityDialog.gd")
 const HUD_SCALE := 0.15
@@ -33,6 +34,7 @@ var inventory_panel
 var shop_panel
 var chest_panel
 var workbench_panel
+var furnace_panel
 var drag_item_ui
 var trade_dialog
 var quick_buttons_bar: HBoxContainer
@@ -51,6 +53,7 @@ var _shop_open: bool = false
 var _settings_open: bool = false
 var _chest_open: bool = false
 var _workbench_open: bool = false
+var _furnace_open: bool = false
 var _active_chest_data: Dictionary = {}
 var _pending_craft_recipe_id: String = ""
 
@@ -62,6 +65,7 @@ func _ready() -> void:
 	_build_shop_panel()
 	_build_chest_panel()
 	_build_workbench_panel()
+	_build_furnace_panel()
 	_build_drag_ui()
 	_build_trade_dialog()
 	_build_item_tooltip()
@@ -102,6 +106,10 @@ func handle_global_input(event: InputEvent) -> bool:
 		close_workbench()
 		ui_clicked.emit()
 		return true
+	if _furnace_open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		close_furnace()
+		ui_clicked.emit()
+		return true
 	if _chest_open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		close_chest()
 		ui_clicked.emit()
@@ -140,7 +148,7 @@ func get_selected_item_id() -> String:
 
 
 func is_inventory_open() -> bool:
-	return inventory_panel.is_open() or _chest_open or _workbench_open
+	return inventory_panel.is_open() or _chest_open or _workbench_open or _furnace_open
 
 
 func is_dragging() -> bool:
@@ -150,6 +158,12 @@ func is_dragging() -> bool:
 func toggle_inventory() -> void:
 	if _chest_open:
 		close_chest()
+		return
+	if _workbench_open:
+		close_workbench()
+		return
+	if _furnace_open:
+		close_furnace()
 		return
 	if _shop_open or _settings_open:
 		return
@@ -172,6 +186,8 @@ func open_shop() -> void:
 		close_chest()
 	if _workbench_open:
 		close_workbench()
+	if _furnace_open:
+		close_furnace()
 	if _settings_open:
 		close_settings()
 	_shop_open = true
@@ -203,6 +219,8 @@ func open_settings() -> void:
 		close_chest()
 	if _workbench_open:
 		close_workbench()
+	if _furnace_open:
+		close_furnace()
 	if _shop_open:
 		close_shop()
 	if inventory_panel.is_open():
@@ -229,6 +247,8 @@ func open_chest(chest_data: Dictionary) -> void:
 		close_settings()
 	if _workbench_open:
 		close_workbench()
+	if _furnace_open:
+		close_furnace()
 	_active_chest_data = chest_data
 	var item_id: String = String(chest_data.get("item_id", ""))
 	var columns: int = ItemDatabase.get_container_columns(item_id)
@@ -265,6 +285,8 @@ func open_workbench() -> void:
 		close_settings()
 	if _chest_open:
 		close_chest()
+	if _furnace_open:
+		close_furnace()
 	_workbench_open = true
 	inventory_panel.set_open(true, "left")
 	workbench_panel.set_open(true)
@@ -284,10 +306,38 @@ func close_workbench() -> void:
 	inventory_toggled.emit(false)
 
 
+func open_furnace() -> void:
+	if _shop_open:
+		close_shop()
+	if _settings_open:
+		close_settings()
+	if _chest_open:
+		close_chest()
+	if _workbench_open:
+		close_workbench()
+	_furnace_open = true
+	inventory_panel.set_open(true, "left")
+	furnace_panel.set_open(true)
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(true)
+
+
+func close_furnace() -> void:
+	if not _furnace_open:
+		return
+	_furnace_open = false
+	furnace_panel.set_open(false)
+	inventory_panel.set_open(false, "center")
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(false)
+
+
 func _close_open_panel_from_blank_click(mouse_position: Vector2) -> bool:
 	if trade_dialog.is_open() or _dragging:
 		return false
-	if not inventory_panel.is_open() and not _shop_open and not _settings_open and not _chest_open:
+	if not inventory_panel.is_open() and not _shop_open and not _settings_open and not _chest_open and not _furnace_open:
 		return false
 	if _is_point_inside_open_ui(mouse_position):
 		return false
@@ -299,6 +349,8 @@ func _close_open_panel_from_blank_click(mouse_position: Vector2) -> bool:
 		close_chest()
 	elif _workbench_open:
 		close_workbench()
+	elif _furnace_open:
+		close_furnace()
 	else:
 		toggle_inventory()
 	ui_clicked.emit()
@@ -317,6 +369,8 @@ func _is_point_inside_open_ui(mouse_position: Vector2) -> bool:
 	if _chest_open and chest_panel.get_panel_global_rect().has_point(mouse_position):
 		return true
 	if _workbench_open and workbench_panel.get_panel_global_rect().has_point(mouse_position):
+		return true
+	if _furnace_open and furnace_panel.get_panel_global_rect().has_point(mouse_position):
 		return true
 	if _settings_open and settings_panel.get_global_rect().has_point(mouse_position):
 		return true
@@ -399,6 +453,13 @@ func _build_workbench_panel() -> void:
 	workbench_panel.name = "WorkbenchPanel"
 	workbench_panel.set_script(WORKBENCH_PANEL_SCRIPT)
 	add_child(workbench_panel)
+
+
+func _build_furnace_panel() -> void:
+	furnace_panel = Control.new()
+	furnace_panel.name = "FurnacePanel"
+	furnace_panel.set_script(FURNACE_PANEL_SCRIPT)
+	add_child(furnace_panel)
 
 
 func _build_drag_ui() -> void:
@@ -574,6 +635,8 @@ func _connect_signals() -> void:
 	chest_panel.slot_unhovered.connect(_on_slot_unhovered)
 	workbench_panel.craft_option_requested.connect(_on_craft_option_requested)
 	workbench_panel.ui_clicked.connect(_relay_ui_click)
+	furnace_panel.smelt_option_requested.connect(_on_smelt_option_requested)
+	furnace_panel.ui_clicked.connect(_relay_ui_click)
 	shop_panel.buy_option_requested.connect(_on_buy_option_requested)
 	shop_panel.ui_clicked.connect(_relay_ui_click)
 	trade_dialog.trade_confirmed.connect(_on_trade_confirmed)
@@ -671,6 +734,12 @@ func _on_craft_option_requested(recipe_id: String, max_amount: int) -> void:
 	var output_item_id: String = String(recipe.get("output_item_id", recipe_id))
 	_pending_craft_recipe_id = recipe_id
 	trade_dialog.open_dialog("craft", output_item_id, max_amount, 0)
+
+
+func _on_smelt_option_requested(recipe_id: String) -> void:
+	var farm_scene = GameManager.farm_scene
+	if farm_scene != null and farm_scene.has_method("smelt_item_from_furnace"):
+		farm_scene.smelt_item_from_furnace(recipe_id)
 
 
 func _on_trade_confirmed(action_type: String, item_id: String, amount: int) -> void:

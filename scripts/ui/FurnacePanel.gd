@@ -1,9 +1,9 @@
 extends Control
 
-signal craft_option_requested(recipe_id: String, max_amount: int)
+signal smelt_option_requested(recipe_id: String)
 signal ui_clicked
 
-const RECIPE_IDS: Array[String] = ["wood_chest", "iron_chest", "gold_chest", "furnace"]
+const RECIPE_IDS: Array[String] = ["iron_ingot", "gold_ingot"]
 const SLOT_SCRIPT := preload("res://scripts/ui/ItemSlotUI.gd")
 
 var _background: Panel
@@ -60,7 +60,7 @@ func _build_ui() -> void:
 	add_child(_background)
 
 	_title_label = Label.new()
-	_title_label.text = "制造"
+	_title_label.text = "烧制"
 	_title_label.add_theme_font_size_override("font_size", 22)
 	_title_label.add_theme_color_override("font_color", Color(0.29, 0.18, 0.09))
 	_background.add_child(_title_label)
@@ -76,14 +76,14 @@ func _build_ui() -> void:
 		row.add_theme_constant_override("separation", 16)
 		_background.add_child(row)
 
-		var recipe: Dictionary = CraftingData.get_recipe(recipe_id)
+		var recipe: Dictionary = SmeltingData.get_recipe(recipe_id)
 		var output_item_id: String = String(recipe.get("output_item_id", recipe_id))
 
 		var slot: Panel = Panel.new()
 		slot.custom_minimum_size = Vector2(68, 68)
 		slot.set_script(SLOT_SCRIPT)
 		row.add_child(slot)
-		slot.setup("craft", _rows.size(), false)
+		slot.setup("smelt", _rows.size(), false)
 		slot.set_slot_data({"item_id": output_item_id, "amount": int(recipe.get("output_amount", 1))})
 
 		var info_box := VBoxContainer.new()
@@ -101,26 +101,26 @@ func _build_ui() -> void:
 		recipe_label.add_theme_color_override("font_color", Color(0.45, 0.31, 0.14))
 		info_box.add_child(recipe_label)
 
-		var craft_button := Button.new()
-		craft_button.text = "制造"
-		craft_button.custom_minimum_size = Vector2(72, 36)
-		craft_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		craft_button.pressed.connect(_on_craft_button_pressed.bind(_rows.size()))
-		row.add_child(craft_button)
+		var smelt_button := Button.new()
+		smelt_button.text = "烧制"
+		smelt_button.custom_minimum_size = Vector2(72, 36)
+		smelt_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		smelt_button.pressed.connect(_on_smelt_button_pressed.bind(_rows.size()))
+		row.add_child(smelt_button)
 
 		_rows.append({
 			"recipe_id": recipe_id,
 			"row": row,
 			"name_label": name_label,
 			"recipe_label": recipe_label,
-			"craft_button": craft_button
+			"smelt_button": smelt_button
 		})
 
 
 func _update_layout() -> void:
 	if _background == null:
 		return
-	var panel_size := Vector2(420, maxf(320.0, 120.0 + float(_rows.size()) * 82.0))
+	var panel_size := Vector2(420, 320)
 	var viewport_size: Vector2 = get_viewport_rect().size
 	_background.size = panel_size
 	_background.position = Vector2(viewport_size.x - panel_size.x - 24.0, (viewport_size.y - panel_size.y) * 0.5)
@@ -139,34 +139,33 @@ func _update_layout() -> void:
 func _refresh_rows() -> void:
 	for row_data in _rows:
 		var recipe_id: String = row_data["recipe_id"]
-		var recipe: Dictionary = CraftingData.get_recipe(recipe_id)
+		var recipe: Dictionary = SmeltingData.get_recipe(recipe_id)
 		var output_item_id: String = String(recipe.get("output_item_id", recipe_id))
 		var name_label: Label = row_data["name_label"]
 		var recipe_label: Label = row_data["recipe_label"]
-		var craft_button: Button = row_data["craft_button"]
-		var max_amount: int = CraftingData.get_max_craft_amount(recipe_id)
+		var smelt_button: Button = row_data["smelt_button"]
+		var can_smelt: bool = SmeltingData.can_smelt(recipe_id)
 		name_label.text = ItemDatabase.get_display_name(output_item_id)
-		recipe_label.text = _format_recipe(recipe, max_amount)
-		craft_button.disabled = max_amount <= 0
+		recipe_label.text = _format_recipe(recipe, can_smelt)
+		smelt_button.disabled = not can_smelt
 
 
-func _format_recipe(recipe: Dictionary, max_amount: int) -> String:
+func _format_recipe(recipe: Dictionary, can_smelt: bool) -> String:
 	var ingredient_lines: Array[String] = []
 	var ingredients: Dictionary = recipe.get("ingredients", {})
 	for item_id_variant in ingredients.keys():
 		var item_id: String = String(item_id_variant)
 		ingredient_lines.append("%s x%d" % [ItemDatabase.get_display_name(item_id), int(ingredients[item_id_variant])])
-	var status_text: String = "最多可造 %d" % max_amount if max_amount > 0 else "材料不足"
+	var status_text := "可烧制" if can_smelt else "材料不足"
 	return "%s | %s" % [", ".join(ingredient_lines), status_text]
 
 
-func _on_craft_button_pressed(row_index: int) -> void:
+func _on_smelt_button_pressed(row_index: int) -> void:
 	ui_clicked.emit()
 	if row_index < 0 or row_index >= _rows.size():
 		return
 	var recipe_id: String = _rows[row_index]["recipe_id"]
-	var max_amount: int = CraftingData.get_max_craft_amount(recipe_id)
-	if max_amount <= 0:
+	if not SmeltingData.can_smelt(recipe_id):
 		show_message("材料不足")
 		return
-	craft_option_requested.emit(recipe_id, max_amount)
+	smelt_option_requested.emit(recipe_id)

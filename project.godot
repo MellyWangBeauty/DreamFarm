@@ -27,6 +27,7 @@ ItemDatabase="*res://scripts/data/ItemDatabase.gd"
 HotbarManager="*res://scripts/managers/HotbarManager.gd"
 CraftingData="*res://scripts/data/CraftingData.gd"
 MiningData="*res://scripts/data/MiningData.gd"
+SmeltingData="*res://scripts/data/SmeltingData.gd"
 
 [display]
 

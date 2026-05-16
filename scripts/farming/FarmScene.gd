@@ -6,6 +6,8 @@ const TILE_SIZE := 48.0
 const HUD_SCRIPT := preload("res://scripts/ui/FarmHud.gd")
 const FEEDBACK_SCRIPT := preload("res://scripts/effects/FarmFeedback.gd")
 const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
+const MAP_OBJECT_COLLISION_LAYER := 1
+const MAP_OBJECT_COLLISION_MASK := 1
 
 @onready var player = $Player
 @onready var tiles_root: Node2D = $Tiles
@@ -14,9 +16,11 @@ const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
 var _tiles: Dictionary = {}
 var _placed_chests: Dictionary = {}
 var _placed_workbenches: Dictionary = {}
+var _placed_furnaces: Dictionary = {}
 var _placed_ores: Dictionary = {}
 var _chests_root: Node2D
 var _workbenches_root: Node2D
+var _furnaces_root: Node2D
 var _ores_root: Node2D
 var _feedback_controller: Node2D
 var _interaction_hint_label: Label
@@ -30,6 +34,7 @@ func _ready() -> void:
 	_ensure_feedback_controller()
 	_ensure_chests_root()
 	_ensure_workbenches_root()
+	_ensure_furnaces_root()
 	_ensure_ores_root()
 	_ensure_interaction_hint()
 	_ensure_hud()
@@ -49,7 +54,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _is_key_pressed(event, KEY_E):
 		if not _hud.is_inventory_open():
-			if not _open_facing_workbench():
+			if not _open_facing_workbench() and not _open_facing_furnace():
 				_open_facing_chest()
 	elif _is_key_pressed(event, KEY_G):
 		if not _hud.is_inventory_open():
@@ -121,6 +126,17 @@ func get_workbench_save_data() -> Array:
 	return data
 
 
+func get_furnace_save_data() -> Array:
+	var data: Array = []
+	for grid_position in _placed_furnaces.keys():
+		data.append({
+			"grid_x": grid_position.x,
+			"grid_y": grid_position.y,
+			"item_id": String(_placed_furnaces[grid_position].get("item_id", "furnace"))
+		})
+	return data
+
+
 func get_ore_save_data() -> Array:
 	var data: Array = []
 	for grid_position in _placed_ores.keys():
@@ -167,12 +183,44 @@ func load_workbench_save_data(save_data: Array) -> void:
 		_place_workbench_at(grid_position, String(workbench_data.get("item_id", "workbench")), false)
 
 
+func load_furnace_save_data(save_data: Array) -> void:
+	_clear_placed_furnaces()
+	for furnace_data_variant in save_data:
+		var furnace_data: Dictionary = furnace_data_variant
+		var grid_position := Vector2i(int(furnace_data.get("grid_x", 0)), int(furnace_data.get("grid_y", 0)))
+		_clear_ore_at(grid_position)
+		_place_furnace_at(grid_position, String(furnace_data.get("item_id", "furnace")), false)
+
+
 func load_ore_save_data(save_data: Array) -> void:
 	_clear_placed_ores()
 	for ore_data_variant in save_data:
 		var ore_data: Dictionary = ore_data_variant
 		var grid_position := Vector2i(int(ore_data.get("grid_x", 0)), int(ore_data.get("grid_y", 0)))
 		_place_ore_at(grid_position, String(ore_data.get("node_id", "")), false)
+
+
+func ensure_default_ore_node(node_id: String) -> void:
+	for ore_data in MiningData.get_default_nodes():
+		if String(ore_data.get("node_id", "")) != node_id:
+			continue
+		var grid_position := Vector2i(int(ore_data.get("grid_x", 0)), int(ore_data.get("grid_y", 0)))
+		if _placed_ores.has(grid_position):
+			return
+		_place_ore_at(grid_position, node_id, true)
+		return
+
+
+func ensure_default_ore_positions_from_index(node_id: String, first_position_index: int) -> void:
+	var current_index: int = 0
+	for ore_data in MiningData.get_default_nodes():
+		if String(ore_data.get("node_id", "")) != node_id:
+			continue
+		if current_index >= first_position_index:
+			var grid_position := Vector2i(int(ore_data.get("grid_x", 0)), int(ore_data.get("grid_y", 0)))
+			if not _placed_ores.has(grid_position):
+				_place_ore_at(grid_position, node_id, true)
+		current_index += 1
 
 
 func ensure_assistant_node(character_id: String) -> void:
@@ -246,6 +294,8 @@ func _use_selected_tool() -> void:
 		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
 		if _remove_workbench_at(tile_position):
 			_feedback_controller.play_harvest()
+		elif _remove_furnace_at(tile_position):
+			_feedback_controller.play_harvest()
 		elif tile.can_chop_tree():
 			var chop_result: Dictionary = tile.chop_with_axe()
 			if not chop_result.is_empty():
@@ -273,7 +323,11 @@ func _use_selected_tool() -> void:
 			_feedback_controller.play_interact()
 	elif ItemDatabase.is_placeable(selected_item_id):
 		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
-		if ItemDatabase.get_placeable_type(selected_item_id) == "workbench" and _place_workbench_at(tile_position, selected_item_id):
+		var placeable_type: String = ItemDatabase.get_placeable_type(selected_item_id)
+		if placeable_type == "workbench" and _place_workbench_at(tile_position, selected_item_id):
+			_hud.consume_selected_item(1)
+			_feedback_controller.play_interact()
+		elif placeable_type == "furnace" and _place_furnace_at(tile_position, selected_item_id):
 			_hud.consume_selected_item(1)
 			_feedback_controller.play_interact()
 	elif ItemDatabase.is_seed(selected_item_id):
@@ -322,6 +376,15 @@ func _open_facing_workbench() -> bool:
 	return true
 
 
+func _open_facing_furnace() -> bool:
+	var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
+	if not _placed_furnaces.has(tile_position):
+		return false
+	_hud.open_furnace()
+	_feedback_controller.play_ui_click()
+	return true
+
+
 func _place_chest_at(tile_position: Vector2i, item_id: String, slots: Array = [], validate_tile: bool = true) -> bool:
 	if not ItemDatabase.is_container(item_id):
 		return false
@@ -330,6 +393,8 @@ func _place_chest_at(tile_position: Vector2i, item_id: String, slots: Array = []
 	if not _tiles.has(tile_position):
 		return false
 	if _placed_workbenches.has(tile_position):
+		return false
+	if _placed_furnaces.has(tile_position):
 		return false
 	if _placed_ores.has(tile_position):
 		return false
@@ -355,12 +420,18 @@ func _spawn_chest_node(tile_position: Vector2i, item_id: String) -> void:
 	sprite.position = Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.5)
 	sprite.z_index = 8
 	_chests_root.add_child(sprite)
+	_spawn_static_collision(
+		_chests_root,
+		"ChestCollision_%d_%d" % [tile_position.x, tile_position.y],
+		Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.62),
+		Vector2(30.0, 24.0)
+	)
 
 
 func _place_workbench_at(tile_position: Vector2i, item_id: String, validate_tile: bool = true) -> bool:
 	if item_id != "workbench":
 		return false
-	if _placed_workbenches.has(tile_position) or _placed_chests.has(tile_position) or _placed_ores.has(tile_position):
+	if _placed_workbenches.has(tile_position) or _placed_furnaces.has(tile_position) or _placed_chests.has(tile_position) or _placed_ores.has(tile_position):
 		return false
 	if not _tiles.has(tile_position):
 		return false
@@ -386,12 +457,55 @@ func _spawn_workbench_node(tile_position: Vector2i, item_id: String) -> void:
 		var max_dimension: float = maxf(texture_size.x, texture_size.y)
 		sprite.scale = Vector2.ONE * (42.0 / max_dimension)
 	_workbenches_root.add_child(sprite)
+	_spawn_static_collision(
+		_workbenches_root,
+		"WorkbenchCollision_%d_%d" % [tile_position.x, tile_position.y],
+		Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.64),
+		Vector2(30.0, 22.0)
+	)
+
+
+func _place_furnace_at(tile_position: Vector2i, item_id: String, validate_tile: bool = true) -> bool:
+	if item_id != "furnace":
+		return false
+	if _placed_furnaces.has(tile_position) or _placed_workbenches.has(tile_position) or _placed_chests.has(tile_position) or _placed_ores.has(tile_position):
+		return false
+	if not _tiles.has(tile_position):
+		return false
+	if validate_tile:
+		var tile = _tiles[tile_position]
+		if tile.state != "empty":
+			return false
+	_placed_furnaces[tile_position] = {"item_id": item_id}
+	_spawn_furnace_node(tile_position, item_id)
+	return true
+
+
+func _spawn_furnace_node(tile_position: Vector2i, item_id: String) -> void:
+	var sprite := Sprite2D.new()
+	sprite.name = "Furnace_%d_%d" % [tile_position.x, tile_position.y]
+	sprite.texture = ItemDatabase.get_icon(item_id)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.centered = true
+	sprite.position = Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.45)
+	sprite.z_index = 9
+	if sprite.texture != null:
+		var texture_size: Vector2i = sprite.texture.get_size()
+		var max_dimension: float = maxf(texture_size.x, texture_size.y)
+		sprite.scale = Vector2.ONE * (44.0 / max_dimension)
+	_furnaces_root.add_child(sprite)
+	_spawn_static_collision(
+		_furnaces_root,
+		"FurnaceCollision_%d_%d" % [tile_position.x, tile_position.y],
+		Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.66),
+		Vector2(30.0, 24.0)
+	)
 
 
 func _place_ore_at(tile_position: Vector2i, node_id: String, validate_tile: bool = true) -> bool:
 	if not MiningData.node_exists(node_id):
 		return false
-	if _placed_ores.has(tile_position) or _placed_chests.has(tile_position) or _placed_workbenches.has(tile_position):
+	if _placed_ores.has(tile_position) or _placed_chests.has(tile_position) or _placed_workbenches.has(tile_position) or _placed_furnaces.has(tile_position):
 		return false
 	if not _tiles.has(tile_position):
 		return false
@@ -419,6 +533,12 @@ func _spawn_ore_node(tile_position: Vector2i, node_id: String) -> void:
 		var max_dimension: float = maxf(texture_size.x, texture_size.y)
 		sprite.scale = Vector2.ONE * (38.0 / max_dimension)
 	_ores_root.add_child(sprite)
+	_spawn_static_collision(
+		_ores_root,
+		"OreCollision_%d_%d" % [tile_position.x, tile_position.y],
+		Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.58),
+		Vector2(30.0, 24.0)
+	)
 
 
 func _mine_ore_at(tile_position: Vector2i) -> bool:
@@ -443,8 +563,42 @@ func _remove_workbench_at(tile_position: Vector2i) -> bool:
 	var workbench_node := _workbenches_root.get_node_or_null(node_name)
 	if workbench_node != null:
 		workbench_node.queue_free()
+	var collision_name := "WorkbenchCollision_%d_%d" % [tile_position.x, tile_position.y]
+	var collision_node := _workbenches_root.get_node_or_null(collision_name)
+	if collision_node != null:
+		collision_node.queue_free()
 	spawn_item_drop("workbench", 1, Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.5), Vector2.ZERO, true)
 	return true
+
+
+func _remove_furnace_at(tile_position: Vector2i) -> bool:
+	if not _placed_furnaces.has(tile_position):
+		return false
+	_placed_furnaces.erase(tile_position)
+	var node_name := "Furnace_%d_%d" % [tile_position.x, tile_position.y]
+	var furnace_node := _furnaces_root.get_node_or_null(node_name)
+	if furnace_node != null:
+		furnace_node.queue_free()
+	var collision_name := "FurnaceCollision_%d_%d" % [tile_position.x, tile_position.y]
+	var collision_node := _furnaces_root.get_node_or_null(collision_name)
+	if collision_node != null:
+		collision_node.queue_free()
+	spawn_item_drop("furnace", 1, Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.5), Vector2.ZERO, true)
+	return true
+
+
+func _spawn_static_collision(parent: Node, body_name: String, body_position: Vector2, shape_size: Vector2) -> void:
+	var body := StaticBody2D.new()
+	body.name = body_name
+	body.position = body_position
+	body.collision_layer = MAP_OBJECT_COLLISION_LAYER
+	body.collision_mask = MAP_OBJECT_COLLISION_MASK
+	var collision_shape := CollisionShape2D.new()
+	var rectangle_shape := RectangleShape2D.new()
+	rectangle_shape.size = shape_size
+	collision_shape.shape = rectangle_shape
+	body.add_child(collision_shape)
+	parent.add_child(body)
 
 
 func _normalize_chest_slots(item_id: String, slots: Array) -> Array:
@@ -480,6 +634,14 @@ func _clear_placed_workbenches() -> void:
 		child.queue_free()
 
 
+func _clear_placed_furnaces() -> void:
+	_placed_furnaces.clear()
+	if _furnaces_root == null:
+		return
+	for child in _furnaces_root.get_children():
+		child.queue_free()
+
+
 func _clear_placed_ores() -> void:
 	_placed_ores.clear()
 	if _ores_root == null:
@@ -498,6 +660,10 @@ func _clear_ore_at(tile_position: Vector2i) -> void:
 	var ore_node := _ores_root.get_node_or_null(node_name)
 	if ore_node != null:
 		ore_node.queue_free()
+	var collision_name := "OreCollision_%d_%d" % [tile_position.x, tile_position.y]
+	var collision_node := _ores_root.get_node_or_null(collision_name)
+	if collision_node != null:
+		collision_node.queue_free()
 
 
 func _clear_ores_on_occupied_tiles() -> void:
@@ -585,6 +751,12 @@ func _ensure_workbenches_root() -> void:
 	add_child(_workbenches_root)
 
 
+func _ensure_furnaces_root() -> void:
+	_furnaces_root = Node2D.new()
+	_furnaces_root.name = "Furnaces"
+	add_child(_furnaces_root)
+
+
 func _ensure_ores_root() -> void:
 	_ores_root = Node2D.new()
 	_ores_root.name = "Ores"
@@ -652,6 +824,25 @@ func craft_item_from_workbench(recipe_id: String, amount: int) -> void:
 	_feedback_controller.play_ui_click()
 
 
+func smelt_item_from_furnace(recipe_id: String) -> void:
+	if not SmeltingData.can_smelt(recipe_id):
+		_feedback_controller.show_text("材料不足", Color(1.0, 0.45, 0.30), player.global_position + Vector2(0, -72))
+		return
+	var recipe: Dictionary = SmeltingData.get_recipe(recipe_id)
+	var output_item_id: String = String(recipe.get("output_item_id", recipe_id))
+	var output_amount: int = maxi(int(recipe.get("output_amount", 1)), 1)
+	if not SmeltingData.consume_ingredients(recipe_id):
+		_feedback_controller.show_text("材料不足", Color(1.0, 0.45, 0.30), player.global_position + Vector2(0, -72))
+		return
+	var dropped_amount: int = _distribute_crafted_items(output_item_id, output_amount)
+	var crafted_amount: int = output_amount - dropped_amount
+	if crafted_amount > 0:
+		_feedback_controller.show_pickup_feedback(ItemDatabase.get_display_name(output_item_id), crafted_amount, player.global_position + Vector2(0, -48))
+	if dropped_amount > 0:
+		_feedback_controller.show_text("背包已满，掉落 x%d" % dropped_amount, Color(1.0, 0.82, 0.42), player.global_position + Vector2(0, -80))
+	_feedback_controller.play_ui_click()
+
+
 func _distribute_crafted_items(item_id: String, amount: int) -> int:
 	var dropped_amount: int = 0
 	for _index in range(amount):
@@ -695,6 +886,8 @@ func _update_interaction_hint() -> void:
 	var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
 	if _placed_workbenches.has(tile_position):
 		_interaction_hint_label.text = "按 E 制造"
+	elif _placed_furnaces.has(tile_position):
+		_interaction_hint_label.text = "按 E 烧制"
 	else:
 		_interaction_hint_label.visible = false
 		return

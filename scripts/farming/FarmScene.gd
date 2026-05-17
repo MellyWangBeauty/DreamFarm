@@ -77,11 +77,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_use_selected_tool()
 	elif _is_key_pressed(event, KEY_N):
 		TimeManager.next_day()
-	elif _is_key_pressed(event, KEY_K):
-		var hired: bool = RecruitmentManager.hire_character("aria")
-		if hired:
-			_feedback_controller.show_hire_feedback("阿丽亚", Vector2(350, 10))
-		print("招募阿丽亚结果：%s" % hired)
 
 
 func _draw() -> void:
@@ -162,6 +157,18 @@ func get_ore_save_data() -> Array:
 	return data
 
 
+func get_assistant_save_data() -> Array:
+	var data: Array = []
+	for child in assistants_root.get_children():
+		if child == null or not is_instance_valid(child):
+			continue
+		if not bool(child.get("hired")):
+			continue
+		if child.has_method("get_save_data"):
+			data.append(child.get_save_data())
+	return data
+
+
 func has_placed_workbench() -> bool:
 	return not _placed_workbenches.is_empty()
 
@@ -216,6 +223,16 @@ func load_ore_save_data(save_data: Array) -> void:
 		_place_ore_at(grid_position, String(ore_data.get("node_id", "")), false)
 
 
+func load_assistant_save_data(save_data: Array) -> void:
+	for assistant_data_variant in save_data:
+		var assistant_data: Dictionary = assistant_data_variant
+		var character_id := String(assistant_data.get("character_id", ""))
+		if character_id.is_empty():
+			continue
+		var spawn_position := Vector2(float(assistant_data.get("x", 350.0)), float(assistant_data.get("y", 42.0)))
+		ensure_assistant_node(character_id, spawn_position)
+
+
 func ensure_default_ore_node(node_id: String) -> void:
 	for ore_data in MiningData.get_default_nodes():
 		if String(ore_data.get("node_id", "")) != node_id:
@@ -247,11 +264,11 @@ func ensure_all_default_ore_positions() -> void:
 			_place_ore_at(grid_position, node_id, true)
 
 
-func ensure_assistant_node(character_id: String) -> void:
+func ensure_assistant_node(character_id: String, spawn_position: Vector2 = Vector2.INF) -> void:
 	for child in assistants_root.get_children():
 		if child.character_id == character_id:
 			child.hired = true
-			child.assign_to_farm(self)
+			child.assign_to_farm(self, spawn_position)
 			return
 	var assistant_script = load("res://scripts/characters/Assistant.gd")
 	var assistant = Node2D.new()
@@ -259,7 +276,7 @@ func ensure_assistant_node(character_id: String) -> void:
 	assistant.character_id = character_id
 	assistant.hired = RecruitmentManager.is_hired(character_id)
 	assistants_root.add_child(assistant)
-	assistant.assign_to_farm(self)
+	assistant.assign_to_farm(self, spawn_position)
 
 
 func _load_map_layout() -> void:
@@ -1018,6 +1035,7 @@ func _ensure_hud() -> void:
 	_hud.tool_selected.connect(_on_tool_selected)
 	_hud.buy_requested.connect(_on_buy_requested)
 	_hud.sell_requested.connect(_on_sell_requested)
+	_hud.recruit_requested.connect(_on_recruit_requested)
 	_hud.ui_clicked.connect(_on_ui_clicked)
 
 
@@ -1075,6 +1093,20 @@ func smelt_item_from_furnace(recipe_id: String) -> void:
 	if dropped_amount > 0:
 		_feedback_controller.show_text("背包已满，掉落 x%d" % dropped_amount, Color(1.0, 0.82, 0.42), player.global_position + Vector2(0, -80))
 	_feedback_controller.play_ui_click()
+
+
+func recruit_character(character_id: String) -> bool:
+	var character_data := RecruitmentManager.get_character(character_id)
+	if character_data.is_empty():
+		return false
+	var spawn_position: Vector2 = player.global_position + Vector2(18.0, 10.0)
+	if not RecruitmentManager.hire_character(character_id, spawn_position):
+		_feedback_controller.show_text("许愿石不足", Color(1.0, 0.45, 0.30), player.global_position + Vector2(0, -72))
+		return false
+	_feedback_controller.show_hire_feedback(String(character_data.get("name", character_id)), spawn_position + Vector2(0, -32))
+	if _hud != null and _hud.has_method("refresh_recruit_panel"):
+		_hud.refresh_recruit_panel()
+	return true
 
 
 func _distribute_crafted_items(item_id: String, amount: int) -> int:
@@ -1148,6 +1180,10 @@ func _on_sell_requested(item_id: String, amount: int) -> void:
 	var total_gold: int = sell_price * amount
 	CurrencyManager.add_gold(total_gold)
 	_feedback_controller.show_gold_feedback(total_gold, player.global_position + Vector2(0, -56))
+
+
+func _on_recruit_requested(character_id: String) -> void:
+	recruit_character(character_id)
 
 
 func _on_buy_requested(item_id: String, amount: int) -> void:

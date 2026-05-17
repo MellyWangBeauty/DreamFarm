@@ -4,6 +4,7 @@ signal tool_selected(item_id: String)
 signal inventory_toggled(opened: bool)
 signal buy_requested(item_id: String, amount: int)
 signal sell_requested(item_id: String, amount: int)
+signal recruit_requested(character_id: String)
 signal ui_clicked
 
 const TOP_PANEL_TEXTURE := preload("res://assets/placeholder/ui/hud_panel.png")
@@ -11,6 +12,7 @@ const GOLD_TEXTURE := preload("res://assets/placeholder/tools/gold_coin.png")
 const HOTBAR_SCRIPT := preload("res://scripts/ui/HotbarUI.gd")
 const INVENTORY_PANEL_SCRIPT := preload("res://scripts/ui/InventoryPanel.gd")
 const SHOP_PANEL_SCRIPT := preload("res://scripts/ui/ShopPanel.gd")
+const RECRUIT_PANEL_SCRIPT := preload("res://scripts/ui/RecruitPanel.gd")
 const CHEST_PANEL_SCRIPT := preload("res://scripts/ui/ChestPanel.gd")
 const WORKBENCH_PANEL_SCRIPT := preload("res://scripts/ui/WorkbenchPanel.gd")
 const FURNACE_PANEL_SCRIPT := preload("res://scripts/ui/FurnacePanel.gd")
@@ -32,6 +34,7 @@ var day_progress_label: Label
 var hotbar_ui
 var inventory_panel
 var shop_panel
+var recruit_panel
 var chest_panel
 var workbench_panel
 var furnace_panel
@@ -50,6 +53,7 @@ var _drag_source_type: String = ""
 var _drag_source_index: int = -1
 var _last_day_progress: float = 0.0
 var _shop_open: bool = false
+var _recruit_open: bool = false
 var _settings_open: bool = false
 var _chest_open: bool = false
 var _workbench_open: bool = false
@@ -63,6 +67,7 @@ func _ready() -> void:
 	_build_hotbar()
 	_build_inventory_panel()
 	_build_shop_panel()
+	_build_recruit_panel()
 	_build_chest_panel()
 	_build_workbench_panel()
 	_build_furnace_panel()
@@ -102,6 +107,10 @@ func handle_global_input(event: InputEvent) -> bool:
 			close_settings()
 			ui_clicked.emit()
 		return true
+	if _recruit_open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		close_recruit()
+		ui_clicked.emit()
+		return true
 	if _workbench_open and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		close_workbench()
 		ui_clicked.emit()
@@ -118,6 +127,10 @@ func handle_global_input(event: InputEvent) -> bool:
 		ui_clicked.emit()
 		return true
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_K:
+			toggle_recruit()
+			ui_clicked.emit()
+			return true
 		if event.keycode == KEY_P:
 			toggle_shop()
 			ui_clicked.emit()
@@ -125,6 +138,10 @@ func handle_global_input(event: InputEvent) -> bool:
 		if event.keycode == KEY_ESCAPE:
 			if _shop_open:
 				close_shop()
+				ui_clicked.emit()
+				return true
+			if _recruit_open:
+				close_recruit()
 				ui_clicked.emit()
 				return true
 			if inventory_panel.is_open():
@@ -148,7 +165,7 @@ func get_selected_item_id() -> String:
 
 
 func is_inventory_open() -> bool:
-	return inventory_panel.is_open() or _chest_open or _workbench_open or _furnace_open
+	return inventory_panel.is_open() or _chest_open or _workbench_open or _furnace_open or _recruit_open
 
 
 func is_dragging() -> bool:
@@ -165,7 +182,7 @@ func toggle_inventory() -> void:
 	if _furnace_open:
 		close_furnace()
 		return
-	if _shop_open or _settings_open:
+	if _shop_open or _settings_open or _recruit_open:
 		return
 	var next_state: bool = not inventory_panel.is_open()
 	inventory_panel.set_open(next_state, "center")
@@ -181,6 +198,13 @@ func toggle_shop() -> void:
 		open_shop()
 
 
+func toggle_recruit() -> void:
+	if _recruit_open:
+		close_recruit()
+	else:
+		open_recruit()
+
+
 func open_shop() -> void:
 	if _chest_open:
 		close_chest()
@@ -190,6 +214,8 @@ func open_shop() -> void:
 		close_furnace()
 	if _settings_open:
 		close_settings()
+	if _recruit_open:
+		close_recruit()
 	_shop_open = true
 	inventory_panel.set_open(true, "left")
 	shop_panel.set_open(true)
@@ -205,6 +231,41 @@ func close_shop() -> void:
 	if _dragging:
 		_cancel_drag()
 	inventory_toggled.emit(false)
+
+
+func open_recruit() -> void:
+	if _shop_open:
+		close_shop()
+	if _settings_open:
+		close_settings()
+	if _chest_open:
+		close_chest()
+	if _workbench_open:
+		close_workbench()
+	if _furnace_open:
+		close_furnace()
+	if inventory_panel.is_open():
+		inventory_panel.set_open(false, "center")
+	_recruit_open = true
+	recruit_panel.set_open(true)
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(true)
+
+
+func close_recruit() -> void:
+	if not _recruit_open:
+		return
+	_recruit_open = false
+	recruit_panel.set_open(false)
+	if _dragging:
+		_cancel_drag()
+	inventory_toggled.emit(false)
+
+
+func refresh_recruit_panel() -> void:
+	if recruit_panel != null:
+		recruit_panel.refresh()
 
 
 func toggle_settings() -> void:
@@ -223,6 +284,8 @@ func open_settings() -> void:
 		close_furnace()
 	if _shop_open:
 		close_shop()
+	if _recruit_open:
+		close_recruit()
 	if inventory_panel.is_open():
 		inventory_panel.set_open(false, "center")
 		inventory_toggled.emit(false)
@@ -243,6 +306,8 @@ func close_settings() -> void:
 func open_chest(chest_data: Dictionary) -> void:
 	if _shop_open:
 		close_shop()
+	if _recruit_open:
+		close_recruit()
 	if _settings_open:
 		close_settings()
 	if _workbench_open:
@@ -281,6 +346,8 @@ func flush_open_chest() -> void:
 func open_workbench() -> void:
 	if _shop_open:
 		close_shop()
+	if _recruit_open:
+		close_recruit()
 	if _settings_open:
 		close_settings()
 	if _chest_open:
@@ -309,6 +376,8 @@ func close_workbench() -> void:
 func open_furnace() -> void:
 	if _shop_open:
 		close_shop()
+	if _recruit_open:
+		close_recruit()
 	if _settings_open:
 		close_settings()
 	if _chest_open:
@@ -337,12 +406,14 @@ func close_furnace() -> void:
 func _close_open_panel_from_blank_click(mouse_position: Vector2) -> bool:
 	if trade_dialog.is_open() or _dragging:
 		return false
-	if not inventory_panel.is_open() and not _shop_open and not _settings_open and not _chest_open and not _furnace_open:
+	if not inventory_panel.is_open() and not _shop_open and not _recruit_open and not _settings_open and not _chest_open and not _furnace_open:
 		return false
 	if _is_point_inside_open_ui(mouse_position):
 		return false
 	if _shop_open:
 		close_shop()
+	elif _recruit_open:
+		close_recruit()
 	elif _settings_open:
 		close_settings()
 	elif _chest_open:
@@ -365,6 +436,8 @@ func _is_point_inside_open_ui(mouse_position: Vector2) -> bool:
 	if inventory_panel.is_open() and inventory_panel.get_panel_global_rect().has_point(mouse_position):
 		return true
 	if _shop_open and shop_panel.get_panel_global_rect().has_point(mouse_position):
+		return true
+	if _recruit_open and recruit_panel.get_panel_global_rect().has_point(mouse_position):
 		return true
 	if _chest_open and chest_panel.get_panel_global_rect().has_point(mouse_position):
 		return true
@@ -441,6 +514,13 @@ func _build_shop_panel() -> void:
 	add_child(shop_panel)
 
 
+func _build_recruit_panel() -> void:
+	recruit_panel = Control.new()
+	recruit_panel.name = "RecruitPanel"
+	recruit_panel.set_script(RECRUIT_PANEL_SCRIPT)
+	add_child(recruit_panel)
+
+
 func _build_chest_panel() -> void:
 	chest_panel = Control.new()
 	chest_panel.name = "ChestPanel"
@@ -495,13 +575,14 @@ func _build_quick_buttons() -> void:
 	quick_buttons_bar.name = "QuickButtons"
 	quick_buttons_bar.anchor_left = 1.0
 	quick_buttons_bar.anchor_right = 1.0
-	quick_buttons_bar.offset_left = -204.0
+	quick_buttons_bar.offset_left = -270.0
 	quick_buttons_bar.offset_top = 16.0
 	quick_buttons_bar.offset_right = -16.0
 	quick_buttons_bar.offset_bottom = 76.0
 	quick_buttons_bar.add_theme_constant_override("separation", 8)
 	add_child(quick_buttons_bar)
 
+	quick_buttons_bar.add_child(_make_quick_button("招募", "K", Callable(self, "_on_recruit_button_pressed")))
 	quick_buttons_bar.add_child(_make_quick_button("背包", "B", Callable(self, "_on_inventory_button_pressed")))
 	quick_buttons_bar.add_child(_make_quick_button("商店", "P", Callable(self, "_on_shop_button_pressed")))
 	quick_buttons_bar.add_child(_make_quick_button("设置", "ESC", Callable(self, "_on_settings_button_pressed")))
@@ -637,6 +718,8 @@ func _connect_signals() -> void:
 	workbench_panel.ui_clicked.connect(_relay_ui_click)
 	furnace_panel.smelt_option_requested.connect(_on_smelt_option_requested)
 	furnace_panel.ui_clicked.connect(_relay_ui_click)
+	recruit_panel.recruit_requested.connect(_on_recruit_requested)
+	recruit_panel.ui_clicked.connect(_relay_ui_click)
 	shop_panel.buy_option_requested.connect(_on_buy_option_requested)
 	shop_panel.ui_clicked.connect(_relay_ui_click)
 	trade_dialog.trade_confirmed.connect(_on_trade_confirmed)
@@ -692,6 +775,8 @@ func _on_gold_changed(value: int) -> void:
 
 func _on_wish_stone_changed(value: int) -> void:
 	wish_stone_label.text = "%d" % value
+	if recruit_panel != null and recruit_panel.is_open():
+		recruit_panel.refresh()
 
 
 func _on_inventory_changed(_items: Dictionary) -> void:
@@ -742,6 +827,10 @@ func _on_smelt_option_requested(recipe_id: String) -> void:
 		farm_scene.smelt_item_from_furnace(recipe_id)
 
 
+func _on_recruit_requested(character_id: String) -> void:
+	recruit_requested.emit(character_id)
+
+
 func _on_trade_confirmed(action_type: String, item_id: String, amount: int) -> void:
 	if action_type == "sell":
 		sell_requested.emit(item_id, amount)
@@ -761,13 +850,22 @@ func _relay_ui_click() -> void:
 func _on_inventory_button_pressed() -> void:
 	if _settings_open:
 		close_settings()
+	if _recruit_open:
+		close_recruit()
 	toggle_inventory()
+	ui_clicked.emit()
+
+
+func _on_recruit_button_pressed() -> void:
+	toggle_recruit()
 	ui_clicked.emit()
 
 
 func _on_shop_button_pressed() -> void:
 	if _settings_open:
 		close_settings()
+	if _recruit_open:
+		close_recruit()
 	toggle_shop()
 	ui_clicked.emit()
 

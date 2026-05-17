@@ -20,6 +20,9 @@ func save_game() -> void:
 	var ore_data: Array = []
 	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_ore_save_data"):
 		ore_data = GameManager.farm_scene.get_ore_save_data()
+	var assistant_data: Array = []
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("get_assistant_save_data"):
+		assistant_data = GameManager.farm_scene.get_assistant_save_data()
 	var hotbar_manager: Node = get_node("/root/HotbarManager")
 	var payload: Dictionary = {
 		"day": TimeManager.day,
@@ -35,6 +38,7 @@ func save_game() -> void:
 		"farm_workbenches": workbench_data,
 		"farm_furnaces": furnace_data,
 		"farm_ores": ore_data,
+		"farm_assistants": assistant_data,
 		"smelting_system_version": 1,
 		"stone_resource_expansion_version": 1,
 		"map_layout_version": 1
@@ -95,6 +99,8 @@ func load_game() -> void:
 			GameManager.farm_scene.ensure_default_ore_positions_from_index("stone_ore_node", 1)
 		if not payload.has("map_layout_version") and GameManager.farm_scene.has_method("ensure_all_default_ore_positions"):
 			GameManager.farm_scene.ensure_all_default_ore_positions()
+	if GameManager.farm_scene != null and GameManager.farm_scene.has_method("load_assistant_save_data") and payload.has("farm_assistants"):
+		GameManager.farm_scene.load_assistant_save_data(payload.get("farm_assistants", []))
 	if hotbar_manager.has_method("ensure_item_present"):
 		var has_placed_workbench: bool = GameManager.farm_scene != null and GameManager.farm_scene.has_method("has_placed_workbench") and GameManager.farm_scene.has_placed_workbench()
 		if not has_placed_workbench:

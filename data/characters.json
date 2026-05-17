@@ -5,6 +5,8 @@
 	"role": "farm_assistant",
 	"life_talent": "auto_water",
 	"combat_role": "support",
-	"hire_cost_wish_stone": 100
+	"hire_cost_wish_stone": 100,
+	"portrait_path": "res://assets/placeholder/characters/aria.png",
+	"walksheet_path": "res://assets/placeholder/characters/aria_walksheet.png"
   }
 }

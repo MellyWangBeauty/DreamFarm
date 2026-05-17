@@ -54,6 +54,8 @@ var current_stage: int = 0
 var growth_minutes: int = 0
 var watered_today: bool = false
 var grid_position: Vector2i = Vector2i.ZERO
+var farmable: bool = true
+var show_ground_tile: bool = true
 var _ground_sprite: Sprite2D
 var _crop_sprite: Sprite2D
 var _tree_body: StaticBody2D
@@ -81,6 +83,8 @@ func _process(_delta: float) -> void:
 
 
 func till() -> bool:
+	if not farmable:
+		return false
 	if state != "empty":
 		return false
 	state = "tilled"
@@ -93,6 +97,8 @@ func plant(new_crop_id: String) -> bool:
 		push_warning("FarmingTile.plant: crop '%s' does not exist." % new_crop_id)
 		return false
 	var planting_tree: bool = CropData.is_tree(new_crop_id)
+	if not farmable and not planting_tree:
+		return false
 	if planting_tree:
 		if state != "empty" and state != "tilled":
 			return false
@@ -263,6 +269,7 @@ func _update_visuals() -> void:
 	if _is_tree():
 		tile_texture = TILE_TEXTURES["empty"]
 	_apply_sprite_texture(_ground_sprite, tile_texture, TILE_SIZE)
+	_ground_sprite.visible = show_ground_tile
 	var crop_texture: Texture2D = _get_crop_texture()
 	_crop_sprite.visible = crop_texture != null
 	if crop_texture != null:

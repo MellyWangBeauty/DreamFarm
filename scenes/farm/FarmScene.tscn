@@ -11,3 +11,4 @@ script = ExtResource("1_farm_scene_script")
 [node name="Assistants" type="Node" parent="." unique_id=724008333]
 
 [node name="Player" parent="." unique_id=625237030 instance=ExtResource("2_player_scene")]
+position = Vector2(216, 216)

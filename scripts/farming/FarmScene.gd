@@ -1,13 +1,17 @@
 extends Node2D
 
-const GRID_WIDTH := 6
-const GRID_HEIGHT := 6
+const GRID_WIDTH := 24
+const GRID_HEIGHT := 18
 const TILE_SIZE := 48.0
+const MAP_LAYOUT_PATH := "res://data/map_layout.json"
+const WATER_AUTOTILE_TEXTURE_PATH := "res://assets/placeholder/tiles/water_autotile.png"
 const HUD_SCRIPT := preload("res://scripts/ui/FarmHud.gd")
 const FEEDBACK_SCRIPT := preload("res://scripts/effects/FarmFeedback.gd")
 const ITEM_DROP_SCENE := preload("res://scenes/items/ItemDrop.tscn")
 const MAP_OBJECT_COLLISION_LAYER := 1
 const MAP_OBJECT_COLLISION_MASK := 1
+const WATER_TILE_SOURCE_COLUMNS := 4
+const WATER_TILE_SOURCE_ROWS := 4
 
 @onready var player = $Player
 @onready var tiles_root: Node2D = $Tiles
@@ -18,6 +22,11 @@ var _placed_chests: Dictionary = {}
 var _placed_workbenches: Dictionary = {}
 var _placed_furnaces: Dictionary = {}
 var _placed_ores: Dictionary = {}
+var _water_tiles: Dictionary = {}
+var _farmable_tiles: Dictionary = {}
+var _map_layout: Dictionary = {}
+var _water_texture: Texture2D
+var _water_root: Node2D
 var _chests_root: Node2D
 var _workbenches_root: Node2D
 var _furnaces_root: Node2D
@@ -31,6 +40,8 @@ var _shop_buy_items: Array[String] = ["wheat_seed", "potato_seed", "carrot_seed"
 
 func _ready() -> void:
 	GameManager.register_farm_scene(self)
+	_load_map_layout()
+	_ensure_water_root()
 	_ensure_feedback_controller()
 	_ensure_chests_root()
 	_ensure_workbenches_root()
@@ -38,7 +49,9 @@ func _ready() -> void:
 	_ensure_ores_root()
 	_ensure_interaction_hint()
 	_ensure_hud()
+	_create_water_tiles()
 	_create_tiles()
+	_spawn_default_trees()
 	_spawn_default_ores()
 	_spawn_existing_assistants()
 	queue_redraw()
@@ -72,14 +85,15 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-256, -180, 1600, 1100), Color(0.63, 0.83, 0.44))
-	draw_rect(Rect2(-20, -20, GRID_WIDTH * TILE_SIZE + 40, GRID_HEIGHT * TILE_SIZE + 40), Color(0.76, 0.67, 0.45, 0.85))
-	for x in range(GRID_WIDTH + 1):
-		var x_pos: float = x * TILE_SIZE
-		draw_line(Vector2(x_pos, 0), Vector2(x_pos, GRID_HEIGHT * TILE_SIZE), Color(0.45, 0.38, 0.20, 0.15), 1.0)
-	for y in range(GRID_HEIGHT + 1):
-		var y_pos: float = y * TILE_SIZE
-		draw_line(Vector2(0, y_pos), Vector2(GRID_WIDTH * TILE_SIZE, y_pos), Color(0.45, 0.38, 0.20, 0.15), 1.0)
+	var map_width := GRID_WIDTH * TILE_SIZE
+	var map_height := GRID_HEIGHT * TILE_SIZE
+	draw_rect(Rect2(-TILE_SIZE, -TILE_SIZE, map_width + TILE_SIZE * 2.0, map_height + TILE_SIZE * 2.0), Color(0.50, 0.72, 0.32))
+	draw_rect(Rect2(Vector2.ZERO, Vector2(map_width, map_height)), Color(0.63, 0.83, 0.44))
+	draw_rect(Rect2(Vector2(TILE_SIZE * 1.4, TILE_SIZE * 1.25), Vector2(TILE_SIZE * 8.4, TILE_SIZE * 8.2)), Color(0.70, 0.78, 0.38, 0.70))
+	draw_rect(Rect2(Vector2(TILE_SIZE * 16.0, TILE_SIZE * 1.1), Vector2(TILE_SIZE * 7.0, TILE_SIZE * 8.2)), Color(0.55, 0.57, 0.38, 0.55))
+	draw_rect(Rect2(Vector2(TILE_SIZE * 0.4, TILE_SIZE * 9.0), Vector2(TILE_SIZE * 8.8, TILE_SIZE * 8.4)), Color(0.39, 0.66, 0.31, 0.45))
+	draw_rect(Rect2(Vector2(TILE_SIZE * 9.5, TILE_SIZE * 11.5), Vector2(TILE_SIZE * 5.8, TILE_SIZE * 5.6)), Color(0.72, 0.82, 0.44, 0.40))
+	_draw_water_tiles()
 
 
 func _process(_delta: float) -> void:
@@ -156,6 +170,8 @@ func load_farm_tile_save_data(save_data: Array) -> void:
 	for tile_data_variant in save_data:
 		var tile_data: Dictionary = tile_data_variant
 		var position_key: Vector2i = Vector2i(int(tile_data.get("grid_x", 0)), int(tile_data.get("grid_y", 0)))
+		if not _tiles.has(position_key) and _is_within_map(position_key) and not _is_water_tile(position_key):
+			_create_farming_tile(position_key, true, true)
 		if _tiles.has(position_key):
 			_tiles[position_key].load_save_data(tile_data)
 	_clear_ores_on_occupied_tiles()
@@ -223,6 +239,14 @@ func ensure_default_ore_positions_from_index(node_id: String, first_position_ind
 		current_index += 1
 
 
+func ensure_all_default_ore_positions() -> void:
+	for ore_data in MiningData.get_default_nodes():
+		var node_id := String(ore_data.get("node_id", ""))
+		var grid_position := Vector2i(int(ore_data.get("grid_x", 0)), int(ore_data.get("grid_y", 0)))
+		if not _placed_ores.has(grid_position):
+			_place_ore_at(grid_position, node_id, true)
+
+
 func ensure_assistant_node(character_id: String) -> void:
 	for child in assistants_root.get_children():
 		if child.character_id == character_id:
@@ -238,19 +262,205 @@ func ensure_assistant_node(character_id: String) -> void:
 	assistant.assign_to_farm(self)
 
 
+func _load_map_layout() -> void:
+	_map_layout.clear()
+	_water_tiles.clear()
+	_farmable_tiles.clear()
+	if not FileAccess.file_exists(MAP_LAYOUT_PATH):
+		push_warning("FarmScene: map layout file is missing: %s" % MAP_LAYOUT_PATH)
+		return
+	var file := FileAccess.open(MAP_LAYOUT_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("FarmScene: failed to open map layout file: %s" % MAP_LAYOUT_PATH)
+		return
+	var parser := JSON.new()
+	if parser.parse(file.get_as_text()) != OK:
+		push_warning("FarmScene: failed to parse map layout file: %s" % MAP_LAYOUT_PATH)
+		return
+	_map_layout = parser.data
+	for water_position in _map_layout.get("water_tiles", []):
+		var tile_position := _position_from_data(water_position)
+		if _is_within_map(tile_position):
+			_water_tiles[tile_position] = true
+	for farm_position in _map_layout.get("farmable_tiles", []):
+		var tile_position := _position_from_data(farm_position)
+		if _is_within_map(tile_position) and not _is_water_tile(tile_position):
+			_farmable_tiles[tile_position] = true
+	_water_texture = _load_texture(WATER_AUTOTILE_TEXTURE_PATH)
+
+
 func _create_tiles() -> void:
 	if not _tiles.is_empty():
 		return
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
-			var tile_script = load("res://scripts/farming/FarmingTile.gd")
-			var tile = Node2D.new()
-			tile.set_script(tile_script)
-			tile.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
-			tile.grid_position = Vector2i(x, y)
-			tile.name = "Tile_%d_%d" % [x, y]
-			tiles_root.add_child(tile)
-			_tiles[Vector2i(x, y)] = tile
+			var tile_position := Vector2i(x, y)
+			if _is_water_tile(tile_position):
+				continue
+			_create_farming_tile(tile_position, _farmable_tiles.has(tile_position), true)
+
+
+func _create_farming_tile(tile_position: Vector2i, is_farmable: bool, show_ground: bool):
+	if _tiles.has(tile_position):
+		return _tiles[tile_position]
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
+		return null
+	var tile_script = load("res://scripts/farming/FarmingTile.gd")
+	var tile = Node2D.new()
+	tile.set_script(tile_script)
+	tile.position = Vector2(tile_position.x * TILE_SIZE, tile_position.y * TILE_SIZE)
+	tile.grid_position = tile_position
+	tile.farmable = is_farmable
+	tile.show_ground_tile = show_ground
+	tile.name = "Tile_%d_%d" % [tile_position.x, tile_position.y]
+	tiles_root.add_child(tile)
+	_tiles[tile_position] = tile
+	return tile
+
+
+func _create_water_tiles() -> void:
+	if _water_root == null:
+		return
+	for child in _water_root.get_children():
+		child.queue_free()
+	for tile_position in _water_tiles.keys():
+		_spawn_static_collision(
+			_water_root,
+			"WaterCollision_%d_%d" % [tile_position.x, tile_position.y],
+			Vector2(tile_position.x * TILE_SIZE + TILE_SIZE * 0.5, tile_position.y * TILE_SIZE + TILE_SIZE * 0.5),
+			Vector2(TILE_SIZE, TILE_SIZE)
+		)
+
+
+func _spawn_default_trees() -> void:
+	for tree_data_variant in _map_layout.get("default_trees", []):
+		var tree_data: Dictionary = tree_data_variant
+		var tile_position := _position_from_data(tree_data)
+		if not _can_hold_natural_resource(tile_position):
+			continue
+		var tile = _create_farming_tile(tile_position, false, true)
+		if tile == null or tile.state != "empty":
+			continue
+		var stage: int = clampi(int(tree_data.get("stage", 0)), 0, CropData.get_growth_stage_count("tree") - 1)
+		tile.load_save_data({
+			"grid_x": tile_position.x,
+			"grid_y": tile_position.y,
+			"state": "grown" if stage >= CropData.get_growth_stage_count("tree") - 1 else "planted",
+			"crop_id": "tree",
+			"current_stage": stage,
+			"growth_minutes": stage * CropData.get_stage_duration_minutes("tree"),
+			"watered_today": false
+		})
+
+
+func _position_from_data(data: Dictionary) -> Vector2i:
+	return Vector2i(int(data.get("grid_x", 0)), int(data.get("grid_y", 0)))
+
+
+func _is_within_map(tile_position: Vector2i) -> bool:
+	return tile_position.x >= 0 and tile_position.y >= 0 and tile_position.x < GRID_WIDTH and tile_position.y < GRID_HEIGHT
+
+
+func _is_water_tile(tile_position: Vector2i) -> bool:
+	return _water_tiles.has(tile_position)
+
+
+func _can_hold_natural_resource(tile_position: Vector2i) -> bool:
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
+		return false
+	if _placed_chests.has(tile_position) or _placed_workbenches.has(tile_position) or _placed_furnaces.has(tile_position) or _placed_ores.has(tile_position):
+		return false
+	return true
+
+
+func _draw_water_tiles() -> void:
+	for tile_position in _water_tiles.keys():
+		_draw_water_tile(tile_position)
+
+
+func _draw_water_tile(tile_position: Vector2i) -> void:
+	var origin := Vector2(tile_position.x * TILE_SIZE, tile_position.y * TILE_SIZE)
+	var tile_rect := Rect2(origin, Vector2(TILE_SIZE, TILE_SIZE))
+	draw_rect(tile_rect, Color(0.13, 0.66, 0.72))
+	draw_rect(Rect2(origin + Vector2(2.0, 2.0), Vector2(TILE_SIZE - 4.0, TILE_SIZE - 4.0)), Color(0.16, 0.76, 0.78))
+	draw_line(origin + Vector2(9.0, 12.0), origin + Vector2(27.0, 8.0), Color(0.72, 0.98, 0.92, 0.48), 1.0)
+	draw_line(origin + Vector2(24.0, 30.0), origin + Vector2(41.0, 25.0), Color(0.73, 1.0, 0.95, 0.35), 1.0)
+	_draw_water_shore(tile_position, Vector2i.UP)
+	_draw_water_shore(tile_position, Vector2i.DOWN)
+	_draw_water_shore(tile_position, Vector2i.LEFT)
+	_draw_water_shore(tile_position, Vector2i.RIGHT)
+
+
+func _draw_water_shore(tile_position: Vector2i, direction: Vector2i) -> void:
+	if _is_water_tile(tile_position + direction):
+		return
+	var origin := Vector2(tile_position.x * TILE_SIZE, tile_position.y * TILE_SIZE)
+	var shallow_color := Color(0.36, 0.84, 0.74, 0.88)
+	var bank_color := Color(0.74, 0.55, 0.30, 0.92)
+	var grass_color := Color(0.54, 0.78, 0.30, 0.92)
+	if direction == Vector2i.UP:
+		draw_rect(Rect2(origin, Vector2(TILE_SIZE, 8.0)), shallow_color)
+		draw_rect(Rect2(origin, Vector2(TILE_SIZE, 3.0)), bank_color)
+		draw_rect(Rect2(origin, Vector2(TILE_SIZE, 1.0)), grass_color)
+	elif direction == Vector2i.DOWN:
+		draw_rect(Rect2(origin + Vector2(0.0, TILE_SIZE - 8.0), Vector2(TILE_SIZE, 8.0)), shallow_color)
+		draw_rect(Rect2(origin + Vector2(0.0, TILE_SIZE - 3.0), Vector2(TILE_SIZE, 3.0)), bank_color)
+		draw_rect(Rect2(origin + Vector2(0.0, TILE_SIZE - 1.0), Vector2(TILE_SIZE, 1.0)), grass_color)
+	elif direction == Vector2i.LEFT:
+		draw_rect(Rect2(origin, Vector2(8.0, TILE_SIZE)), shallow_color)
+		draw_rect(Rect2(origin, Vector2(3.0, TILE_SIZE)), bank_color)
+		draw_rect(Rect2(origin, Vector2(1.0, TILE_SIZE)), grass_color)
+	elif direction == Vector2i.RIGHT:
+		draw_rect(Rect2(origin + Vector2(TILE_SIZE - 8.0, 0.0), Vector2(8.0, TILE_SIZE)), shallow_color)
+		draw_rect(Rect2(origin + Vector2(TILE_SIZE - 3.0, 0.0), Vector2(3.0, TILE_SIZE)), bank_color)
+		draw_rect(Rect2(origin + Vector2(TILE_SIZE - 1.0, 0.0), Vector2(1.0, TILE_SIZE)), grass_color)
+
+
+func _get_water_atlas_region(tile_index: int) -> Rect2:
+	var texture_size: Vector2 = _water_texture.get_size()
+	var source_tile_width := floorf(texture_size.x / float(WATER_TILE_SOURCE_COLUMNS))
+	var source_tile_height := floorf(texture_size.y / float(WATER_TILE_SOURCE_ROWS))
+	var column := tile_index % WATER_TILE_SOURCE_COLUMNS
+	var row := tile_index / WATER_TILE_SOURCE_COLUMNS
+	return Rect2(column * source_tile_width, row * source_tile_height, source_tile_width, source_tile_height)
+
+
+func _choose_water_tile_index(tile_position: Vector2i) -> int:
+	var north := _is_water_tile(tile_position + Vector2i.UP)
+	var south := _is_water_tile(tile_position + Vector2i.DOWN)
+	var west := _is_water_tile(tile_position + Vector2i.LEFT)
+	var east := _is_water_tile(tile_position + Vector2i.RIGHT)
+	if not north and not west:
+		return 5
+	if not north and not east:
+		return 6
+	if not south and not west:
+		return 7
+	if not south and not east:
+		return 8
+	if east and west and not north and not south:
+		return 13
+	if north and south and not east and not west:
+		return 14
+	if north and south and east and west:
+		if not _is_water_tile(tile_position + Vector2i(-1, -1)):
+			return 9
+		if not _is_water_tile(tile_position + Vector2i(1, -1)):
+			return 10
+		if not _is_water_tile(tile_position + Vector2i(-1, 1)):
+			return 11
+		if not _is_water_tile(tile_position + Vector2i(1, 1)):
+			return 12
+		return 0
+	if not north:
+		return 1
+	if not south:
+		return 2
+	if not west:
+		return 3
+	if not east:
+		return 4
+	return 15
 
 
 func _use_tile_action(action_name: String) -> void:
@@ -280,15 +490,13 @@ func _use_selected_tool() -> void:
 	if selected_item_id.is_empty():
 		return
 	var tile = _get_facing_tile()
-	if tile == null:
-		return
 	player.play_tool_swing(selected_item_id)
 	_hud.pulse_selected_slot()
 	var facing_tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
 	if _placed_ores.has(facing_tile_position) and selected_item_id != "pickaxe":
 		return
 	if selected_item_id == "hoe":
-		if tile.till():
+		if tile != null and tile.till():
 			_feedback_controller.play_interact()
 	elif selected_item_id == "axe":
 		var tile_position: Vector2i = player.get_facing_tile_position(TILE_SIZE)
@@ -296,7 +504,7 @@ func _use_selected_tool() -> void:
 			_feedback_controller.play_harvest()
 		elif _remove_furnace_at(tile_position):
 			_feedback_controller.play_harvest()
-		elif tile.can_chop_tree():
+		elif tile != null and tile.can_chop_tree():
 			var chop_result: Dictionary = tile.chop_with_axe()
 			if not chop_result.is_empty():
 				_collect_chop_drops(chop_result.get("drops", []), tile.get_feedback_position())
@@ -304,10 +512,10 @@ func _use_selected_tool() -> void:
 			else:
 				_feedback_controller.play_interact()
 	elif selected_item_id == "watering_can":
-		if tile.water():
+		if tile != null and tile.water():
 			_feedback_controller.play_water()
 	elif selected_item_id == "scythe":
-		if tile.can_harvest():
+		if tile != null and tile.can_harvest():
 			var harvest_result: Dictionary = tile.harvest()
 			if not harvest_result.is_empty():
 				spawn_item_drop(String(harvest_result.get("item_id", "")), int(harvest_result.get("amount", 1)), tile.get_feedback_position())
@@ -331,6 +539,8 @@ func _use_selected_tool() -> void:
 			_hud.consume_selected_item(1)
 			_feedback_controller.play_interact()
 	elif ItemDatabase.is_seed(selected_item_id):
+		if tile == null:
+			return
 		var crop_id: String = ItemDatabase.get_crop_id_from_seed(selected_item_id)
 		if tile.plant(crop_id):
 			_hud.consume_selected_item(1)
@@ -390,7 +600,7 @@ func _place_chest_at(tile_position: Vector2i, item_id: String, slots: Array = []
 		return false
 	if _placed_chests.has(tile_position):
 		return false
-	if not _tiles.has(tile_position):
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
 		return false
 	if _placed_workbenches.has(tile_position):
 		return false
@@ -399,8 +609,8 @@ func _place_chest_at(tile_position: Vector2i, item_id: String, slots: Array = []
 	if _placed_ores.has(tile_position):
 		return false
 	if validate_tile:
-		var tile = _tiles[tile_position]
-		if tile.state != "empty":
+		var tile = _tiles.get(tile_position, null)
+		if tile != null and tile.state != "empty":
 			return false
 	var chest_data := {
 		"item_id": item_id,
@@ -433,11 +643,11 @@ func _place_workbench_at(tile_position: Vector2i, item_id: String, validate_tile
 		return false
 	if _placed_workbenches.has(tile_position) or _placed_furnaces.has(tile_position) or _placed_chests.has(tile_position) or _placed_ores.has(tile_position):
 		return false
-	if not _tiles.has(tile_position):
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
 		return false
 	if validate_tile:
-		var tile = _tiles[tile_position]
-		if tile.state != "empty":
+		var tile = _tiles.get(tile_position, null)
+		if tile != null and tile.state != "empty":
 			return false
 	_placed_workbenches[tile_position] = {"item_id": item_id}
 	_spawn_workbench_node(tile_position, item_id)
@@ -470,11 +680,11 @@ func _place_furnace_at(tile_position: Vector2i, item_id: String, validate_tile: 
 		return false
 	if _placed_furnaces.has(tile_position) or _placed_workbenches.has(tile_position) or _placed_chests.has(tile_position) or _placed_ores.has(tile_position):
 		return false
-	if not _tiles.has(tile_position):
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
 		return false
 	if validate_tile:
-		var tile = _tiles[tile_position]
-		if tile.state != "empty":
+		var tile = _tiles.get(tile_position, null)
+		if tile != null and tile.state != "empty":
 			return false
 	_placed_furnaces[tile_position] = {"item_id": item_id}
 	_spawn_furnace_node(tile_position, item_id)
@@ -507,11 +717,11 @@ func _place_ore_at(tile_position: Vector2i, node_id: String, validate_tile: bool
 		return false
 	if _placed_ores.has(tile_position) or _placed_chests.has(tile_position) or _placed_workbenches.has(tile_position) or _placed_furnaces.has(tile_position):
 		return false
-	if not _tiles.has(tile_position):
+	if not _is_within_map(tile_position) or _is_water_tile(tile_position):
 		return false
 	if validate_tile:
-		var tile = _tiles[tile_position]
-		if tile.state != "empty":
+		var tile = _tiles.get(tile_position, null)
+		if tile != null and tile.state != "empty":
 			return false
 	_placed_ores[tile_position] = {"node_id": node_id}
 	_spawn_ore_node(tile_position, node_id)
@@ -601,6 +811,24 @@ func _spawn_static_collision(parent: Node, body_name: String, body_position: Vec
 	parent.add_child(body)
 
 
+func _load_texture(resource_path: String) -> Texture2D:
+	if resource_path.is_empty():
+		return null
+	if FileAccess.file_exists("%s.import" % resource_path):
+		var texture: Texture2D = load(resource_path)
+		if texture != null:
+			return texture
+	if not resource_path.begins_with("res://"):
+		return null
+	var file_path := ProjectSettings.globalize_path(resource_path)
+	if not FileAccess.file_exists(file_path):
+		return null
+	var image := Image.new()
+	if image.load(file_path) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
 func _normalize_chest_slots(item_id: String, slots: Array) -> Array:
 	var result: Array = []
 	var capacity: int = ItemDatabase.get_container_capacity(item_id)
@@ -669,10 +897,10 @@ func _clear_ore_at(tile_position: Vector2i) -> void:
 func _clear_ores_on_occupied_tiles() -> void:
 	for tile_position_variant in _placed_ores.keys().duplicate():
 		var tile_position: Vector2i = tile_position_variant
-		if not _tiles.has(tile_position):
+		if not _is_within_map(tile_position) or _is_water_tile(tile_position):
 			_clear_ore_at(tile_position)
 			continue
-		if _tiles[tile_position].state != "empty":
+		if _tiles.has(tile_position) and _tiles[tile_position].state != "empty":
 			_clear_ore_at(tile_position)
 
 
@@ -737,6 +965,12 @@ func _ensure_feedback_controller() -> void:
 	_feedback_controller.name = "Feedback"
 	_feedback_controller.set_script(FEEDBACK_SCRIPT)
 	add_child(_feedback_controller)
+
+
+func _ensure_water_root() -> void:
+	_water_root = Node2D.new()
+	_water_root.name = "Water"
+	add_child(_water_root)
 
 
 func _ensure_chests_root() -> void:

@@ -36,7 +36,8 @@ func save_game() -> void:
 		"farm_furnaces": furnace_data,
 		"farm_ores": ore_data,
 		"smelting_system_version": 1,
-		"stone_resource_expansion_version": 1
+		"stone_resource_expansion_version": 1,
+		"map_layout_version": 1
 	}
 	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -92,6 +93,8 @@ func load_game() -> void:
 			GameManager.farm_scene.ensure_default_ore_node("coal_ore_node")
 		if not payload.has("stone_resource_expansion_version") and GameManager.farm_scene.has_method("ensure_default_ore_positions_from_index"):
 			GameManager.farm_scene.ensure_default_ore_positions_from_index("stone_ore_node", 1)
+		if not payload.has("map_layout_version") and GameManager.farm_scene.has_method("ensure_all_default_ore_positions"):
+			GameManager.farm_scene.ensure_all_default_ore_positions()
 	if hotbar_manager.has_method("ensure_item_present"):
 		var has_placed_workbench: bool = GameManager.farm_scene != null and GameManager.farm_scene.has_method("has_placed_workbench") and GameManager.farm_scene.has_placed_workbench()
 		if not has_placed_workbench:
